@@ -1,0 +1,6 @@
+venv/*
+__pycache__/*
+agent_simulation/vehicles/*
+grbnodes0/*
+agent_simulation/q_functions*
+data/
