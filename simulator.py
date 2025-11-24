@@ -20,7 +20,8 @@ class Simulator:
         self.n_periods = n_periods
 
         self.grid = grid.Grid()
-        self.models = [[model.DriverModel(self.grid, period, _class) for _class in range(n_classes)] for period in range(n_periods)]
+        self.w_estimates = [model.WEstimates() for period in range(n_periods)]
+        self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 
@@ -41,11 +42,18 @@ class Simulator:
     def get_period(self):
         return get_period(self.t)
 
+    def clean_queue(self, cluster, time):
+        # remove any drivers that have been in the queue for more than 2 hours
+        for _class in range(len(self.drivers[cluster])):
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
+
     def process_request(self, request):
         if self.next_req < len(self.requests):
             next_request = self.requests[self.next_req]
             heapq.heappush(self.next_events, (next_request.time, "r", next_request))
             self.next_req += 1
+
+        self.clean_queue(request.start_cluster, request.time)
 
         # check if a driver is available, and find the class if so
         driver_counts = [len(x) for x in self.drivers[request.start_cluster]]
@@ -53,9 +61,8 @@ class Simulator:
 
         if n_drivers == 0:
             self.observer.observe_request(request, None, False)
-            print(f"failed to find a driver. drivers: {self.drivers[request.start_cluster]}")
             return
-        raise Exception("finally found a driver.")
+        n_drivers_elsewhere = [sum([len(x) for x in y]) for y in self.drivers]
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
         remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster)
 
@@ -88,9 +95,9 @@ class Simulator:
             return
         if action == cluster:
             self.drivers[cluster][_class].append(self.t)
-            print(f"chose to enter queue.")
+            print(f"chose to enter queue: {cluster}")
         else:
-            print(f"moving.")
+            print(f"moving to {action}.")
             end_time = self.t + self.grid.get_travel_time(cluster, action, self.get_period())
 
             arrival = Arrival(end_time, cluster, action, _class)
@@ -139,6 +146,8 @@ class Simulator:
 
 
 if __name__ == "__main__":
+    print("I think there's an issue since everyone chooses to go to cluster 15 for some reason.")
+    print("I also think the cents vs dollars is a bit out of wack.")
     reqs = trip_reqs.get_trip_requests()
     simulator = Simulator(reqs, 16, 16, 8)
     while not simulator.is_stopped():

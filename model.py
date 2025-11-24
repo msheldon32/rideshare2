@@ -3,14 +3,25 @@ from util import *
 import random
 import csv
 
-class DriverModel:
-    def __init__(self, grid, period, destination):
-        self.grid = grid
+class WEstimates:
+    def __init__(self):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
+        self.alpha_w = 0.95
+
+    def observe_w(self, cluster, w):
+        old_w = self.w_estimates[cluster]
+        new_w = self.alpha_w*old_w + (1-self.alpha_w)*w
+
+        self.w_estimates[cluster] = new_w
+
+
+class DriverModel:
+    def __init__(self, grid, period, destination, w_estimates):
+        self.grid = grid
         self.r_estimates = [10 for i in range(N_CLUSTERS)]
         self.s_estimates = [[0 for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.p_estimates = [[(1/N_CLUSTERS) for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
-        self.alpha_w = 0.95
+        self.w_estimates = w_estimates
         self.alpha_r = 0.95
         self.alpha_s = 0.95
         self.alpha_p = 0.99
@@ -21,7 +32,7 @@ class DriverModel:
 
         self.bellman_iterations = 100
 
-        self.boltzmann_tau = 1.0
+        self.boltzmann_tau = 10.0
 
         # get the exit rates for the current time period
 
@@ -34,10 +45,7 @@ class DriverModel:
                     break
 
     def observe_w(self, cluster, w):
-        old_w = self.w_estimates[cluster]
-        new_w = self.alpha_w*old_w + (1-self.alpha_w)*w
-
-        self.w_estimates[cluster] = new_w
+        self.w_estimates.observe_w(cluster, w)
 
     def observe_r(self, cluster, r):
         old_r = self.r_estimates[cluster]
@@ -71,8 +79,8 @@ class DriverModel:
 
             # cost of entering the queue
             expected_r = self.r_estimates[cluster]
-            expected_w = self.w_estimates[cluster]
-            r[cluster][cluster] = expected_r - expected_w  # this uses the fiction that travel costs are already handled.
+            expected_w = self.w_estimates.w_estimates[cluster]
+            r[cluster][cluster] = expected_r - expected_w*RESERVATION  # this uses the fiction that travel costs are already handled.
 
         return r
 
@@ -116,10 +124,9 @@ class DriverModel:
         #    return cluster
         q_values = self.get_q_values()
 
-        #print(f"({cluster}) q_values: {q_values[cluster]}")
-        #print(f"({cluster}) incremental rewards: {self.incremental_rewards()[cluster]}")
-        #print(f"({cluster}) w_estimates: {self.w_estimates}")
-        #print(f"({cluster}) r_estimates: {self.r_estimates}")
+        print(f"({cluster}) q_values: {q_values[cluster]}")
+        print(f"({cluster}) incremental rewards: {self.incremental_rewards()[cluster]}")
+        print(f"({cluster}) r_estimates: {self.r_estimates}")
 
         unnorm_probs = [math.exp(q/self.boltzmann_tau) for q in q_values[cluster]]
         norm = sum(unnorm_probs)
