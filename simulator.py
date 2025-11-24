@@ -7,6 +7,7 @@ import math
 import trip_reqs
 import spawner
 import controller
+import observer
 import grid
 import model
 from util import *
@@ -19,7 +20,7 @@ class Simulator:
         self.n_periods = n_periods
 
         self.grid = grid.Grid()
-        self.models = [[model.DriverModel(self.grid) for i in range(n_classes)] for j in range(n_periods)]
+        self.models = [[model.DriverModel(self.grid, period, _class) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 
@@ -27,6 +28,7 @@ class Simulator:
 
         self.spawner = spawner.Spawner()
         self.controller = controller.Controller()
+        self.observer = observer.Observer()
 
         self.next_events = [(0, "r", self.requests[0])]
         self.next_req = 1
@@ -50,22 +52,28 @@ class Simulator:
         n_drivers = sum(driver_counts)
 
         if n_drivers == 0:
+            self.observer.observe_request(request, None, False)
+            print(f"failed to find a driver. drivers: {self.drivers[request.start_cluster]}")
             return
-
+        raise Exception("finally found a driver.")
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
+        remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster)
+
 
         # check the waiting time of a random driver and report it, as well as the controller's price
         n_drivers_in_class = len(self.drivers[request.start_cluster][driver_class])
         to_evict = random.randrange(n_drivers_in_class)
         arrival_t = self.drivers[request.start_cluster][driver_class].pop(to_evict)
         self.models[self.get_period()][driver_class].observe_w(request.start_cluster, request.time - arrival_t)
-        self.models[self.get_period()][driver_class].observe_r(request.start_cluster, self.controller.get_price(request.period, driver_class, request.start_cluster))
+        self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
+        self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
 
         end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
 
         arrival = Arrival(end_time, request.start_cluster, request.end_cluster, driver_class)
         heapq.heappush(self.next_events, (end_time, "a", arrival))
 
+        self.observer.observe_request(request, remuneration, True)
 
     def decide(self, cluster, _class):
         # check the action of the driver and increment self.drivers appropriately
@@ -76,10 +84,13 @@ class Simulator:
 
         if action == -1:
             # vehicle leaves the system
+            print(f"leaving the system.")
             return
         if action == cluster:
             self.drivers[cluster][_class].append(self.t)
+            print(f"chose to enter queue.")
         else:
+            print(f"moving.")
             end_time = self.t + self.grid.get_travel_time(cluster, action, self.get_period())
 
             arrival = Arrival(end_time, cluster, action, _class)
@@ -132,3 +143,7 @@ if __name__ == "__main__":
     simulator = Simulator(reqs, 16, 16, 8)
     while not simulator.is_stopped():
         simulator.step()
+    sim_observer = simulator.observer
+    print(f"Total trips: {sim_observer.total_trips[-1]}")
+    print(f"Total requests: {sim_observer.total_requests[-1]}")
+    print(f"Net profit: {sim_observer.profit[-1]}")

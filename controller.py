@@ -3,7 +3,8 @@ class Controller:
         pass
 
     def get_price(self, period, _class, cluster):
-        return 10
+        # this is in cents
+        return 700
 
     def get_subsidy(self, period, _class, start, end):
         return 0
