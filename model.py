@@ -22,9 +22,9 @@ class DriverModel:
         self.s_estimates = [[0 for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.p_estimates = [[(1/N_CLUSTERS) for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.w_estimates = w_estimates
-        self.alpha_r = 0.95
-        self.alpha_s = 0.95
-        self.alpha_p = 0.99
+        self.alpha_r = 0.8
+        self.alpha_s = 0.9
+        self.alpha_p = 0.95
         self.period = period
         self.destination = destination
         self.exit_prob = 1
@@ -33,6 +33,8 @@ class DriverModel:
         self.bellman_iterations = 100
 
         self.boltzmann_tau = 10.0
+        self.min_boltzmann = 1.0
+        self.boltzmann_decay = 0.999
 
         # get the exit rates for the current time period
 
@@ -81,7 +83,6 @@ class DriverModel:
             expected_r = self.r_estimates[cluster]
             expected_w = self.w_estimates.w_estimates[cluster]
             r[cluster][cluster] = expected_r - expected_w*RESERVATION  # this uses the fiction that travel costs are already handled.
-
         return r
 
     def get_q_values(self):
@@ -103,8 +104,8 @@ class DriverModel:
                     if cluster == end_cluster:
                         continue
                     q_values[cluster][end_cluster] = v_values[end_cluster] + incremental_rewards[cluster][end_cluster]
-                q_values[cluster][0] = 0
                 q_values[cluster][cluster] = incremental_rewards[cluster][end_cluster]
+                q_values[cluster][-1] = incremental_rewards[cluster][-1]
 
                 for end_cluster in range(N_CLUSTERS):
                     q_values[cluster][cluster] += self.p_estimates[cluster][end_cluster] * v_values[end_cluster]
@@ -115,20 +116,25 @@ class DriverModel:
         return q_values
     
     def decide(self, cluster):
-        #x = random.random()
-        #if x < 0.1:
-        #    return -1
-        #elif x < 0.3:
-        #    return random.randrange(N_CLUSTERS)
-        #else:
-        #    return cluster
-        q_values = self.get_q_values()
+        if False:
+            x = random.random()
+            if x < 0.1:
+                return -1
+            elif x < 0.3:
+                return random.randrange(N_CLUSTERS)
+            else:
+                return cluster
 
+        q_values = self.get_q_values()
+        print(f"period: {self.period}")
         print(f"({cluster}) q_values: {q_values[cluster]}")
         print(f"({cluster}) incremental rewards: {self.incremental_rewards()[cluster]}")
         print(f"({cluster}) r_estimates: {self.r_estimates}")
+        print(f"({cluster}) w_estimates: {self.w_estimates.w_estimates}")
 
+        print(f"({cluster}) unnorm_probs(pre): {[q/self.boltzmann_tau for q in q_values[cluster]]}")
         unnorm_probs = [math.exp(q/self.boltzmann_tau) for q in q_values[cluster]]
+        print(f"({cluster}) unnorm_probs: {unnorm_probs}")
         norm = sum(unnorm_probs)
         probs = [x/norm for x in unnorm_probs]
         action = 0
@@ -139,6 +145,10 @@ class DriverModel:
             if cprob >= rval:
                 action = i
                 break
+        print(f"({cluster}) chose action {action}")
+        print(f"({cluster}) probs: {probs}")
+        print(f"({cluster}) tau: {self.boltzmann_tau}")
+        self.boltzmann_tau = self.min_boltzmann + self.boltzmann_decay*(self.boltzmann_tau - self.min_boltzmann)
         if action == len(probs)-1:
             return -1
         return action
