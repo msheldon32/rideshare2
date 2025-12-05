@@ -18,7 +18,7 @@ class WEstimates:
 class DriverModel:
     def __init__(self, grid, period, destination, w_estimates):
         self.grid = grid
-        self.r_estimates = [10 for i in range(N_CLUSTERS)]
+        self.r_estimates = [20 for i in range(N_CLUSTERS)]
         self.s_estimates = [[0 for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.p_estimates = [[(1/N_CLUSTERS) for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.w_estimates = w_estimates
@@ -104,16 +104,19 @@ class DriverModel:
                     if cluster == end_cluster:
                         continue
                     q_values[cluster][end_cluster] = v_values[end_cluster] + incremental_rewards[cluster][end_cluster]
-                q_values[cluster][cluster] = incremental_rewards[cluster][end_cluster]
+                q_values[cluster][cluster] = incremental_rewards[cluster][cluster]
                 q_values[cluster][-1] = incremental_rewards[cluster][-1]
 
                 for end_cluster in range(N_CLUSTERS):
-                    q_values[cluster][cluster] += self.p_estimates[cluster][end_cluster] * v_values[end_cluster]
+                    q_values[cluster][cluster] += (1-self.exit_prob)*self.p_estimates[cluster][end_cluster] * v_values[end_cluster]
+                    q_values[cluster][cluster] -= (self.exit_prob)*self.p_estimates[cluster][end_cluster] * self.grid.get_travel_cost(end_cluster, self.destination, self.period)
+                if abs(sum(self.p_estimates[cluster]) - 1) > 0.01:
+                    raise Exception(f"bad probability: {sum(self.p_estimates[cluster])}")
 
             for cluster in range(N_CLUSTERS):
                 v_values[cluster] = max(q_values[cluster])
 
-        return q_values
+        return q_values, v_values
     
     def decide(self, cluster):
         if False:
@@ -125,9 +128,10 @@ class DriverModel:
             else:
                 return cluster
 
-        q_values = self.get_q_values()
+        q_values, v_values = self.get_q_values()
         print(f"period: {self.period}")
         print(f"({cluster}) q_values: {q_values[cluster]}")
+        print(f"({cluster}) v_values: {v_values}")
         print(f"({cluster}) incremental rewards: {self.incremental_rewards()[cluster]}")
         print(f"({cluster}) r_estimates: {self.r_estimates}")
         print(f"({cluster}) w_estimates: {self.w_estimates.w_estimates}")
@@ -155,4 +159,4 @@ class DriverModel:
 
     def decide_exit(self):
         x = random.random()
-        return x < 0.2
+        return x < self.exit_prob

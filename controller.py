@@ -4,7 +4,7 @@ class Controller:
 
     def get_price(self, period, _class, cluster):
         # this is in dollars.
-        return 7
+        return 20
 
     def get_subsidy(self, period, _class, start, end):
         return 0
