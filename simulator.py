@@ -39,12 +39,17 @@ class Simulator:
     def reset(self):
         self.observer.reset()
         self.next_req = 1
+        epoch = self.t
+
+        self.next_events = [(t-epoch, b, c) for a,b,c in self.next_events]
+
         self.t = 0
         self.next_events.append((0, "r", self.requests[0]))
 
+
         for j in range(self.n_clusters):
             for i in range(self.n_classes):
-                self.drivers[j][i] = [0 for x in self.drivers[j][i]]
+                self.drivers[j][i] = [x-epoch for x in self.drivers[j][i]]
 
     def is_stopped(self):
         return self.next_req == len(self.requests)
