@@ -12,3 +12,8 @@ class Observer:
             self.total_trips.append(self.total_trips[-1]+1)
 
             self.profit.append(self.profit[-1]+(request.net_fare_cents-remuneration))
+
+    def reset(self):
+        self.total_requests = [0]
+        self.profit = [0]
+        self.total_trips = [0]

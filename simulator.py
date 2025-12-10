@@ -36,6 +36,16 @@ class Simulator:
 
         heapq.heappush(self.next_events, self.spawner.get_spawn(0))
 
+    def reset(self):
+        self.observer.reset()
+        self.next_req = 1
+        self.t = 0
+        self.next_events.append((0, "r", self.requests[0]))
+
+        for j in range(self.n_clusters):
+            for i in range(self.n_classes):
+                self.drivers[j][i] = [0 for x in self.drivers[j][i]]
+
     def is_stopped(self):
         return self.next_req == len(self.requests)
     
@@ -67,14 +77,16 @@ class Simulator:
             return
         n_drivers_elsewhere = [sum([len(x) for x in y]) for y in self.drivers]
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
-        remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster)
+        self.controller.report_event(request.start_cluster, request.time, n_drivers)
 
 
         # check the waiting time of a random driver and report it, as well as the controller's price
         n_drivers_in_class = len(self.drivers[request.start_cluster][driver_class])
         to_evict = random.randrange(n_drivers_in_class)
         arrival_t = self.drivers[request.start_cluster][driver_class].pop(to_evict)
-        self.models[self.get_period()][driver_class].observe_w(request.start_cluster, request.time - arrival_t)
+        waiting_time = request.time - arrival_t
+        self.models[self.get_period()][driver_class].observe_w(request.start_cluster, waiting_time)
+        remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.net_fare_cents, n_drivers, request.time, waiting_time)
         self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
         self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
 
@@ -97,7 +109,10 @@ class Simulator:
             print(f"leaving the system.")
             return
         if action == cluster:
+            driver_counts = [len(x) for x in self.drivers[cluster]]
+            n_drivers = sum(driver_counts)
             self.drivers[cluster][_class].append(self.t)
+            self.controller.report_event(cluster, self.t, n_drivers)
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")
@@ -149,10 +164,13 @@ class Simulator:
 
 
 if __name__ == "__main__":
-    print("I think there's an issue since everyone chooses to go to cluster 15 for some reason.")
+    print("The big issue to fix now is that the V values seem identical across all clusters")
     print("I also think the cents vs dollars is a bit out of wack.")
     reqs = trip_reqs.get_trip_requests()
     simulator = Simulator(reqs, 16, 16, 8)
+    while not simulator.is_stopped():
+        simulator.step()
+    simulator.reset()
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer

@@ -28,3 +28,6 @@ class Grid:
     
     def get_travel_cost(self,start, end, period):
         return self.costs[period][start][end]
+    
+    def get_prepaid_cost(self, _class, start, end, period):
+        return self.costs[period][start][end] + self.costs[period][end][_class] - self.costs[period][start][_class]
