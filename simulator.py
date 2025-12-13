@@ -41,7 +41,8 @@ class Simulator:
         self.next_req = 1
         epoch = self.t
 
-        self.next_events = [(t-epoch, b, c) for a,b,c in self.next_events]
+        # it should be noted that this preserves the heap
+        self.next_events = [(a-epoch, b, c) for a,b,c in self.next_events]
 
         self.t = 0
         self.next_events.append((0, "r", self.requests[0]))
@@ -182,3 +183,4 @@ if __name__ == "__main__":
     print(f"Total trips: {sim_observer.total_trips[-1]}")
     print(f"Total requests: {sim_observer.total_requests[-1]}")
     print(f"Net profit: {sim_observer.profit[-1]}")
+    sim_observer.save_trip_counts("trip_counts.csv")

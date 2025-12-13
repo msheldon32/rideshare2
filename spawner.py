@@ -7,6 +7,7 @@ from util import *
 class Spawner:
     def __init__(self):
         self.rates = [[[0 for i in range(N_CLUSTERS)] for j in range(N_CLASSES)] for k in range(N_PERIODS)]
+        #input("5x rates")
         self.total_period_rates = [0 for k in range(N_PERIODS)]
         with open("data/new_arrival_rates.csv") as csvfile:
             reader = csv.DictReader(csvfile)
@@ -14,7 +15,7 @@ class Spawner:
             for row in reader:
                 period = int(row["period"])
                 cluster = int(row["start"])
-                rate = float(row["new_arrivals"])
+                rate = float(row["new_arrivals"])#*5
                 self.rates[period][cluster][cluster] = rate
                 self.total_period_rates[period] += rate
 
@@ -22,11 +23,11 @@ class Spawner:
         prob = random.random()
         acc = 0
 
-        tprob = self.total_period_rates[period]
+        norm = self.total_period_rates[period]
 
         for _class in range(N_CLASSES):
             for cluster in range(N_CLUSTERS):
-                acc += self.rates[period][_class][cluster]/tprob
+                acc += self.rates[period][_class][cluster]/norm
 
                 if acc >= prob:
                     return (_class, cluster)

@@ -25,7 +25,11 @@ def get_trip_requests():
             if len(row["total_fare"]) == 0:
                 continue
 
-            total_fare = float(row["total_fare"]) + tip - BOOKING_FEE - _grid.get_travel_cost(start, end, period)
+            travel_cost = _grid.get_travel_cost(start, end, period)
+            total_fare = float(row["total_fare"]) + tip - BOOKING_FEE - travel_cost
+            
+            if float(row["total_fare"]) + tip > 100:
+                continue
 
             total_fare = int(total_fare*100)
 

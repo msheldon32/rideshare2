@@ -18,11 +18,11 @@ class WEstimates:
 class DriverModel:
     def __init__(self, grid, period, destination, w_estimates):
         self.grid = grid
-        self.r_estimates = [20 for i in range(N_CLUSTERS)]
+        self.r_estimates = [10 for i in range(N_CLUSTERS)]
         self.s_estimates = [[0 for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.p_estimates = [[(1/N_CLUSTERS) for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.w_estimates = w_estimates
-        self.alpha_r = 0.8
+        self.alpha_r = 0.9
         self.alpha_s = 0.9
         self.alpha_p = 0.95
         self.period = period
@@ -33,23 +33,33 @@ class DriverModel:
         self.bellman_iterations = 100
 
         self.boltzmann_tau = 10.0
-        self.min_boltzmann = 1.0
+        self.min_boltzmann = 0.5
         self.boltzmann_decay = 0.999
 
-        # get the exit rates for the current time period
+        arrivals = [0 for i in range(N_CLUSTERS)]
 
-        with open("data/exit_probs.csv") as csvfile:
+        # get the exit prob for the current time period
+        with open("data/arrival_rates.csv") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                if int(row["period"]) == self.period:
+                    cluster = int(row["start"])
+                    arrivals[cluster] = float(row["arrivals"])
+
+        with open("data/exit_rates.csv") as csvfile:
             reader = csv.DictReader(csvfile)
 
             for row in reader:
                 if int(row["period"]) == self.period:
-                    self.exit_prob = float(row["exit_prob"])
-                    break
+                    cluster = int(row["start"])
+                    exit_rate = float(row["exits"])
+                    self.exit_prob = min(self.exit_prob, exit_rate/arrivals[cluster])
 
     def observe_w(self, cluster, w):
         self.w_estimates.observe_w(cluster, w)
 
     def observe_r(self, cluster, r):
+        r = min(r, 50) # reward clipping
         old_r = self.r_estimates[cluster]
         new_r = self.alpha_r*old_r + (1-self.alpha_r)*r
 
@@ -137,7 +147,8 @@ class DriverModel:
         print(f"({cluster}) w_estimates: {self.w_estimates.w_estimates}")
 
         print(f"({cluster}) unnorm_probs(pre): {[q/self.boltzmann_tau for q in q_values[cluster]]}")
-        unnorm_probs = [math.exp(q/self.boltzmann_tau) for q in q_values[cluster]]
+        unnorm_probs = [q/self.boltzmann_tau for q in q_values[cluster]]
+        unnorm_probs = [math.exp(min(x,100)) for x in unnorm_probs]
         print(f"({cluster}) unnorm_probs: {unnorm_probs}")
         norm = sum(unnorm_probs)
         probs = [x/norm for x in unnorm_probs]
