@@ -9,6 +9,7 @@ import spawner
 import controller
 import observer
 import grid
+import empirical_tt
 import model
 from util import *
 
@@ -18,7 +19,8 @@ class Simulator:
         self.n_classes = n_classes
         self.n_clusters = n_clusters
         self.n_periods = n_periods
-
+        
+        self.empirical_tt = empirical_tt.EmpiricalTravel(self.requests)
         self.grid = grid.Grid()
         self.w_estimates = [model.WEstimates() for period in range(n_periods)]
         self.exploration = [model.Exploration() for period in range(n_periods)]
@@ -97,7 +99,8 @@ class Simulator:
         self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
         self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
 
-        end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
+        #end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
+        end_time = request.time + self.empirical_tt.get_sample(self.get_period(), request.start_cluster, request.end_cluster)
 
         arrival = Arrival(end_time, request.start_cluster, request.end_cluster, driver_class)
         heapq.heappush(self.next_events, (end_time, "a", arrival))
@@ -123,7 +126,8 @@ class Simulator:
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")
-            end_time = self.t + self.grid.get_travel_time(cluster, action, self.get_period())
+            #end_time = self.t + self.grid.get_travel_time(cluster, action, self.get_period())
+            end_time = self.t + self.empirical_tt.get_sample(self.get_period(), cluster, action)
 
             arrival = Arrival(end_time, cluster, action, _class)
             heapq.heappush(self.next_events, (end_time, "t", arrival))
