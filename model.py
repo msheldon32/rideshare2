@@ -17,7 +17,7 @@ class WEstimates:
 class Exploration:
     def __init__(self):
         self.boltzmann_tau = 10.0
-        self.min_boltzmann = 0.2
+        self.min_boltzmann = 1.0
         self.boltzmann_decay = 0.99995
 
     def decay(self):
@@ -39,7 +39,7 @@ class DriverModel:
         self.n_actions = N_CLUSTERS + 1
         self.exploration = exploration
 
-        self.bellman_iterations = 100
+        self.bellman_iterations = 15
 
         arrivals = [0 for i in range(N_CLUSTERS)]
 
@@ -154,21 +154,32 @@ class DriverModel:
         tau = self.exploration.boltzmann_tau
         unnorm_probs = [q/tau for q in q_values[cluster]]
         self.exploration.decay()
-        unnorm_probs = [math.exp(min(x,100)) for x in unnorm_probs]
-        print(f"({cluster}) unnorm_probs: {unnorm_probs}")
-        norm = sum(unnorm_probs)
-        probs = [x/norm for x in unnorm_probs]
-        action = 0
-        rval = random.random()
-        cprob = 0
-        for i in range(self.n_actions):
-            cprob += probs[i]
-            if cprob >= rval:
-                action = i
-                break
-        print(f"({cluster}) chose action {action}")
-        print(f"({cluster}) probs: {probs}")
-        print(f"({cluster}) tau: {tau}")
+
+        if any([x > 100 for x in unnorm_probs]):
+            # just default to the maximum
+            action = -1
+            max_val = float("-inf")
+            for i, x in enumerate(unnorm_probs):
+                if x > max_val:
+                    max_val = x
+                    action = i
+        else:
+            unnorm_probs = [math.exp(min(x,100)) for x in unnorm_probs]
+
+            print(f"({cluster}) unnorm_probs: {unnorm_probs}")
+            norm = sum(unnorm_probs)
+            probs = [x/norm for x in unnorm_probs]
+            action = 0
+            rval = random.random()
+            cprob = 0
+            for i in range(self.n_actions):
+                cprob += probs[i]
+                if cprob >= rval:
+                    action = i
+                    break
+            print(f"({cluster}) chose action {action}")
+            print(f"({cluster}) probs: {probs}")
+            print(f"({cluster}) tau: {tau}")
         if action == len(probs)-1:
             return -1
         return action

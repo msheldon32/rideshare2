@@ -62,10 +62,10 @@ class Simulator:
         return get_period(self.t)
 
     def clean_queue(self, cluster, time):
-        # remove any drivers that have been in the queue for more than 2 hours
+        # remove any drivers that have been in the queue for more than 3 hours
         for _class in range(len(self.drivers[cluster])):
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
-            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 3]
+            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 3]
             for d in expelled_drivers:
                 self.models[cluster][_class].observe_w(cluster, time-d)
 
@@ -177,6 +177,8 @@ class Simulator:
 if __name__ == "__main__":
     print("The big issue to fix now is that the V values seem identical across all clusters")
     print("I also think the cents vs dollars is a bit out of wack.")
+    input("Trimmed the number of bellman iterations dramatically to speed things up")
+    input("Use max when Q values are too large")
     reqs = trip_reqs.get_trip_requests()
     simulator = Simulator(reqs, 16, 16, 8)
     while not simulator.is_stopped():
