@@ -25,8 +25,8 @@ class MethodController:
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
     def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
-        total_opt = fare - self.last_tax[start_cluster]
-        profit_max = waiting_time + self.grid.get_prepaid_cost(_class, start_cluster, end_cluster, period)
+        total_opt = fare - self.last_tax[start_cluster]*RESERVATION
+        profit_max = waiting_time + self.grid.get_travel_cost(_class, end_cluster, _class) - self.grid.get_travel_cost(_class, start_cluster, _class)
 
         return (1-self.alpha)*total_opt + self.alpha*profit_max
 

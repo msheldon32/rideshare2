@@ -21,7 +21,8 @@ class Simulator:
 
         self.grid = grid.Grid()
         self.w_estimates = [model.WEstimates() for period in range(n_periods)]
-        self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period]) for _class in range(n_classes)] for period in range(n_periods)]
+        self.exploration = [model.Exploration() for period in range(n_periods)]
+        self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 

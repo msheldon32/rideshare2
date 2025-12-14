@@ -22,6 +22,7 @@ class Request:
     end_cluster: int
     period: int
     net_fare_cents: int
+    travel_time: float
 
 @dataclass(order=True)
 class Arrival:

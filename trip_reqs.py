@@ -15,6 +15,10 @@ def get_trip_requests():
 
         for row in reader:
             t = datetime.fromisoformat(row["started_on"])
+            if row["STATUS"] == "b'DISPATCHED'":
+                travel_time = (datetime.fromisoformat(row["completed_on"]) - t).total_seconds() / 3600
+            else:
+                travel_time = float("NaN")
             start = int(row["start_cluster"])
             end = int(row["end_cluster"])
 
@@ -33,15 +37,14 @@ def get_trip_requests():
 
             total_fare = int(total_fare*100)
 
-            out_reqs.append([t, start, end, period, total_fare])
+            out_reqs.append([t, start, end, period, total_fare, travel_time])
             
     out_reqs.sort()
 
     epoch = out_reqs[0][0]
 
     out_reqs = [
-            Request((r[0] - epoch).total_seconds()/(3600), r[1], r[2], r[3], r[4]) for r in out_reqs
+            Request((r[0] - epoch).total_seconds()/(3600), r[1], r[2], r[3], r[4], r[5]) for r in out_reqs
             ]
 
     return out_reqs
-

@@ -6,7 +6,7 @@ import csv
 class WEstimates:
     def __init__(self):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
-        self.alpha_w = 0.95
+        self.alpha_w = 0.8
 
     def observe_w(self, cluster, w):
         old_w = self.w_estimates[cluster]
@@ -14,27 +14,32 @@ class WEstimates:
 
         self.w_estimates[cluster] = new_w
 
+class Exploration:
+    def __init__(self):
+        self.boltzmann_tau = 10.0
+        self.min_boltzmann = 0.2
+        self.boltzmann_decay = 0.99995
+
+    def decay(self):
+        self.boltzmann_tau = self.min_boltzmann + self.boltzmann_decay*(self.boltzmann_tau - self.min_boltzmann)
 
 class DriverModel:
-    def __init__(self, grid, period, destination, w_estimates):
+    def __init__(self, grid, period, destination, w_estimates, exploration):
         self.grid = grid
         self.r_estimates = [10 for i in range(N_CLUSTERS)]
         self.s_estimates = [[0 for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.p_estimates = [[(1/N_CLUSTERS) for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)]
         self.w_estimates = w_estimates
-        self.alpha_r = 0.9
-        self.alpha_s = 0.9
-        self.alpha_p = 0.95
+        self.alpha_r = 0.8
+        self.alpha_s = 0.8
+        self.alpha_p = 0.9
         self.period = period
         self.destination = destination
         self.exit_prob = 1
         self.n_actions = N_CLUSTERS + 1
+        self.exploration = exploration
 
         self.bellman_iterations = 100
-
-        self.boltzmann_tau = 10.0
-        self.min_boltzmann = 0.5
-        self.boltzmann_decay = 0.999
 
         arrivals = [0 for i in range(N_CLUSTERS)]
 
@@ -146,8 +151,9 @@ class DriverModel:
         print(f"({cluster}) r_estimates: {self.r_estimates}")
         print(f"({cluster}) w_estimates: {self.w_estimates.w_estimates}")
 
-        print(f"({cluster}) unnorm_probs(pre): {[q/self.boltzmann_tau for q in q_values[cluster]]}")
-        unnorm_probs = [q/self.boltzmann_tau for q in q_values[cluster]]
+        tau = self.exploration.boltzmann_tau
+        unnorm_probs = [q/tau for q in q_values[cluster]]
+        self.exploration.decay()
         unnorm_probs = [math.exp(min(x,100)) for x in unnorm_probs]
         print(f"({cluster}) unnorm_probs: {unnorm_probs}")
         norm = sum(unnorm_probs)
@@ -162,8 +168,7 @@ class DriverModel:
                 break
         print(f"({cluster}) chose action {action}")
         print(f"({cluster}) probs: {probs}")
-        print(f"({cluster}) tau: {self.boltzmann_tau}")
-        self.boltzmann_tau = self.min_boltzmann + self.boltzmann_decay*(self.boltzmann_tau - self.min_boltzmann)
+        print(f"({cluster}) tau: {tau}")
         if action == len(probs)-1:
             return -1
         return action
