@@ -4,25 +4,30 @@ import random
 import csv
 
 class WEstimates:
-    def __init__(self):
+    def __init__(self, last_t, q_acc):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
         self.alpha_w = 0.8
-        self.q_acc = [0 for i in range(N_CLUSTERS)]
-        self.last_t = [0 for i in range(N_CLUSTERS)]
+        self.q_acc = q_acc
+        self.last_t = last_t
+        self.last_w = [0 for i in range(N_CLUSTERS)]
+        self.q_reports = [[] for i in range(N_CLUSTERS)]
 
     def observe_w(self, cluster, w):
         old_w = self.w_estimates[cluster]
         new_w = self.alpha_w*old_w + (1-self.alpha_w)*w
 
         self.w_estimates[cluster] = new_w
+        self.last_w[cluster] = w
 
     def report_q_len(self, cluster, q_len, t):
         time_spent = t-self.last_t[cluster]
         self.q_acc[cluster] += (q_len*time_spent)
         self.last_t[cluster] = t
+        self.q_reports[cluster].append((time_spent, q_len))
 
     def report_arrival(self, cluster):
         # note to do this after reporting the q length
+        self.q_reports[cluster] = []
         self.observe_w(cluster, self.q_acc[cluster])
         self.q_acc[cluster] = 0
 

@@ -22,7 +22,9 @@ class Simulator:
         
         self.grid = grid.Grid()
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
-        self.w_estimates = [model.WEstimates() for period in range(n_periods)]
+        last_t = [0 for i in range(N_CLUSTERS)]
+        q_acc = [0 for i in range(N_CLUSTERS)]
+        self.w_estimates = [model.WEstimates(last_t, q_acc) for period in range(n_periods)]
         self.exploration = [model.Exploration() for period in range(n_periods)]
         self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
@@ -63,6 +65,7 @@ class Simulator:
 
     def clean_queue(self, cluster, time):
         old_driver_ct = 0
+        period = get_period(time)
         # remove any drivers that have been in the queue for more than 2 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
@@ -70,7 +73,7 @@ class Simulator:
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
             #for d in expelled_drivers:
             #    self.models[cluster][_class].observe_w(cluster, time-d)
-        self.w_estimates.report_q_len(cluster, old_driver_ct, t)
+        self.w_estimates[period].report_q_len(cluster, old_driver_ct, time)
 
     def process_request(self, request):
         if self.next_req < len(self.requests):
@@ -97,8 +100,10 @@ class Simulator:
         arrival_t = self.drivers[request.start_cluster][driver_class].pop(to_evict)
         #waiting_time = request.time - arrival_t
         #raise Exception("finish this but do a one-shot ll estimation of W - fix below i think it needs to be since the last event")
+        print("request q update")
         self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers, request.time)
         #self.models[self.get_period()][driver_class].observe_w(request.start_cluster, waiting_time)
+        waiting_time = self.w_estimates[request.period].last_w[request.start_cluster]
         remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.net_fare_cents, n_drivers, request.time, waiting_time)
         self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
         self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
