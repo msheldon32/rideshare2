@@ -7,12 +7,24 @@ class WEstimates:
     def __init__(self):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
         self.alpha_w = 0.8
+        self.q_acc = [0 for i in range(N_CLUSTERS)]
+        self.last_t = [0 for i in range(N_CLUSTERS)]
 
     def observe_w(self, cluster, w):
         old_w = self.w_estimates[cluster]
         new_w = self.alpha_w*old_w + (1-self.alpha_w)*w
 
         self.w_estimates[cluster] = new_w
+
+    def report_q_len(self, cluster, q_len, t):
+        time_spent = t-self.last_t[cluster]
+        self.q_acc[cluster] += (q_len*time_spent)
+        self.last_t[cluster] = t
+
+    def report_arrival(self, cluster):
+        # note to do this after reporting the q length
+        self.observe_w(cluster, self.q_acc[cluster])
+        self.q_acc[cluster] = 0
 
 class Exploration:
     def __init__(self):
@@ -180,7 +192,7 @@ class DriverModel:
             print(f"({cluster}) chose action {action}")
             print(f"({cluster}) probs: {probs}")
             print(f"({cluster}) tau: {tau}")
-        if action == len(probs)-1:
+        if action == len(unnorm_probs)-1:
             return -1
         return action
 

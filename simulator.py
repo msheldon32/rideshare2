@@ -20,8 +20,8 @@ class Simulator:
         self.n_clusters = n_clusters
         self.n_periods = n_periods
         
-        self.empirical_tt = empirical_tt.EmpiricalTravel(self.requests)
         self.grid = grid.Grid()
+        self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
         self.w_estimates = [model.WEstimates() for period in range(n_periods)]
         self.exploration = [model.Exploration() for period in range(n_periods)]
         self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
@@ -62,12 +62,15 @@ class Simulator:
         return get_period(self.t)
 
     def clean_queue(self, cluster, time):
-        # remove any drivers that have been in the queue for more than 3 hours
+        old_driver_ct = 0
+        # remove any drivers that have been in the queue for more than 2 hours
         for _class in range(len(self.drivers[cluster])):
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 3]
-            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 3]
-            for d in expelled_drivers:
-                self.models[cluster][_class].observe_w(cluster, time-d)
+            old_driver_ct += len(self.drivers[cluster][_class])
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
+            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
+            #for d in expelled_drivers:
+            #    self.models[cluster][_class].observe_w(cluster, time-d)
+        self.w_estimates.report_q_len(cluster, old_driver_ct, t)
 
     def process_request(self, request):
         if self.next_req < len(self.requests):
@@ -84,7 +87,6 @@ class Simulator:
         if n_drivers == 0:
             self.observer.observe_request(request, None, False)
             return
-        n_drivers_elsewhere = [sum([len(x) for x in y]) for y in self.drivers]
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
         self.controller.report_event(request.start_cluster, request.time, n_drivers)
 
@@ -93,8 +95,10 @@ class Simulator:
         n_drivers_in_class = len(self.drivers[request.start_cluster][driver_class])
         to_evict = random.randrange(n_drivers_in_class)
         arrival_t = self.drivers[request.start_cluster][driver_class].pop(to_evict)
-        waiting_time = request.time - arrival_t
-        self.models[self.get_period()][driver_class].observe_w(request.start_cluster, waiting_time)
+        #waiting_time = request.time - arrival_t
+        #raise Exception("finish this but do a one-shot ll estimation of W - fix below i think it needs to be since the last event")
+        self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers, request.time)
+        #self.models[self.get_period()][driver_class].observe_w(request.start_cluster, waiting_time)
         remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.net_fare_cents, n_drivers, request.time, waiting_time)
         self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
         self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
@@ -123,6 +127,8 @@ class Simulator:
             n_drivers = sum(driver_counts)
             self.drivers[cluster][_class].append(self.t)
             self.controller.report_event(cluster, self.t, n_drivers)
+            self.w_estimates[period].report_q_len(cluster, n_drivers, self.t)
+            self.w_estimates[period].report_arrival(cluster)
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")
@@ -160,9 +166,9 @@ class Simulator:
     def step(self):
         event_t, event_type, event = heapq.heappop(self.next_events)
 
-        self.t = event_t
-
         print(f"({event_t}): {event}")
+
+        self.t = event_t
 
         if event_type == "a":
             self.process_arrival(event)

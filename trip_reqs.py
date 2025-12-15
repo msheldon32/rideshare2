@@ -15,7 +15,7 @@ def get_trip_requests():
 
         for row in reader:
             t = datetime.fromisoformat(row["started_on"])
-            if row["STATUS"] == "b'DISPATCHED'":
+            if row["status"] == "b'DISPATCHED'":
                 travel_time = (datetime.fromisoformat(row["completed_on"]) - t).total_seconds() / 3600
             else:
                 travel_time = float("NaN")
