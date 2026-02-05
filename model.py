@@ -4,13 +4,16 @@ import random
 import csv
 
 class WEstimates:
-    def __init__(self, last_t, q_acc):
+    def __init__(self, last_t, q_acc, q_reports):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
         self.alpha_w = 0.8
         self.q_acc = q_acc
         self.last_t = last_t
         self.last_w = [0 for i in range(N_CLUSTERS)]
-        self.q_reports = [[] for i in range(N_CLUSTERS)]
+        self.q_reports = q_reports
+        self.arrivals = []
+
+        self.time_window = 2  # lookback time for w
 
     def observe_w(self, cluster, w):
         old_w = self.w_estimates[cluster]
@@ -19,22 +22,52 @@ class WEstimates:
         self.w_estimates[cluster] = new_w
         self.last_w[cluster] = w
 
+    def get_expected_w(self, cluster, t):
+        # look backward to get the number of arrivals
+        n_arrivals = 0
+        for r in range(0,len(self.arrivals)):
+            i = len(self.arrivals)-1-r
+            if self.arrivals[i] < t-self.time_window:
+                break
+            n_arrivals += 1
+
+        qt = 0
+        last_t = t
+        qr = self.q_reports[cluster]
+        for r in range(0, len(qr)):
+            i = len(qr)-1-r
+            if qr[i][0] < t-self.time_window:
+                qt += (last_t - (t-self.time_window))*qr[i][2]
+                break
+            qt += (last_t - qr[i][0])*qr[i][2]
+            last_t = qr[i][0]
+
+        if n_arrivals == 0:
+            # *shrugs*
+            return 0
+        
+        return qt/n_arrivals
+
     def report_q_len(self, cluster, q_len, t):
         time_spent = t-self.last_t[cluster]
         self.q_acc[cluster] += (q_len*time_spent)
         self.last_t[cluster] = t
-        self.q_reports[cluster].append((time_spent, q_len))
+        self.q_reports[cluster].append((t, time_spent, q_len))
 
-    def report_arrival(self, cluster):
+    def report_arrival(self, cluster, t):
         # note to do this after reporting the q length
-        self.q_reports[cluster] = []
-        self.observe_w(cluster, self.q_acc[cluster])
-        self.q_acc[cluster] = 0
+        #if random.random() < 0.01:
+        #    raise Exception("stop - W estimates are clearly inflated")
+        #self.q_reports[cluster] = []
+        #self.q_reports[cluster].append(("waiting_time", self.q_acc[cluster]))
+        #self.observe_w(cluster, self.q_acc[cluster])
+        #self.q_acc[cluster] = 0
+        self.arrivals.append(t)
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 10.0
-        self.min_boltzmann = 1.0
+        self.boltzmann_tau = 1.0#10.0
+        self.min_boltzmann = 0.5
         self.boltzmann_decay = 0.99995
 
     def decay(self):
@@ -99,7 +132,7 @@ class DriverModel:
 
         self.p_estimates[start][end] += (1-self.alpha_p)
 
-    def incremental_rewards(self):
+    def incremental_rewards(self, t):
         r = [[0 for i in range(self.n_actions)] for j in range(N_CLUSTERS)]
 
         for cluster in range(N_CLUSTERS):
@@ -113,11 +146,11 @@ class DriverModel:
 
             # cost of entering the queue
             expected_r = self.r_estimates[cluster]
-            expected_w = self.w_estimates.w_estimates[cluster]
+            expected_w = self.w_estimates.get_expected_w(cluster, t)
             r[cluster][cluster] = expected_r - expected_w*RESERVATION  # this uses the fiction that travel costs are already handled.
         return r
 
-    def get_q_values(self):
+    def get_q_values(self, t):
         # return a list [a_i | i in clusters]
 
         # use value iteration over each policy
@@ -127,7 +160,7 @@ class DriverModel:
         q_values = [[0 for i in range(self.n_actions)] for j in range(N_CLUSTERS)]
         v_values = [0 for j in range(N_CLUSTERS)]
 
-        incremental_rewards = self.incremental_rewards()
+        incremental_rewards = self.incremental_rewards(t)
 
         # I need to estimate or plug in the probability of transit...
         for i in range(self.bellman_iterations):
@@ -150,7 +183,7 @@ class DriverModel:
 
         return q_values, v_values
     
-    def decide(self, cluster):
+    def decide(self, cluster, t):
         if False:
             x = random.random()
             if x < 0.1:
@@ -160,13 +193,13 @@ class DriverModel:
             else:
                 return cluster
 
-        q_values, v_values = self.get_q_values()
+        q_values, v_values = self.get_q_values(t)
         print(f"period: {self.period}")
         print(f"({cluster}) q_values: {q_values[cluster]}")
         print(f"({cluster}) v_values: {v_values}")
-        print(f"({cluster}) incremental rewards: {self.incremental_rewards()[cluster]}")
+        print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
         print(f"({cluster}) r_estimates: {self.r_estimates}")
-        print(f"({cluster}) w_estimates: {self.w_estimates.w_estimates}")
+        print(f"({cluster}) w_estimates: {[self.w_estimates.get_expected_w(x,t) for x in range(N_CLUSTERS)]}")
 
         tau = self.exploration.boltzmann_tau
         unnorm_probs = [q/tau for q in q_values[cluster]]

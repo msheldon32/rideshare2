@@ -24,7 +24,8 @@ class Simulator:
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
         last_t = [0 for i in range(N_CLUSTERS)]
         q_acc = [0 for i in range(N_CLUSTERS)]
-        self.w_estimates = [model.WEstimates(last_t, q_acc) for period in range(n_periods)]
+        q_reports = [[] for i in range(N_CLUSTERS)]
+        self.w_estimates = [model.WEstimates(last_t, q_acc, q_reports) for period in range(n_periods)]
         self.exploration = [model.Exploration() for period in range(n_periods)]
         self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
@@ -71,8 +72,6 @@ class Simulator:
             old_driver_ct += len(self.drivers[cluster][_class])
             self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
-            #for d in expelled_drivers:
-            #    self.models[cluster][_class].observe_w(cluster, time-d)
         self.w_estimates[period].report_q_len(cluster, old_driver_ct, time)
 
     def process_request(self, request):
@@ -93,17 +92,14 @@ class Simulator:
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
         self.controller.report_event(request.start_cluster, request.time, n_drivers)
 
+        # expel a random driver from the queue
+        driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))
+        waiting_time = self.drivers[request.start_cluster][driver_class][driver_idx]
+        del self.drivers[request.start_cluster][driver_class][driver_idx]
 
-        # check the waiting time of a random driver and report it, as well as the controller's price
-        n_drivers_in_class = len(self.drivers[request.start_cluster][driver_class])
-        to_evict = random.randrange(n_drivers_in_class)
-        arrival_t = self.drivers[request.start_cluster][driver_class].pop(to_evict)
-        #waiting_time = request.time - arrival_t
-        #raise Exception("finish this but do a one-shot ll estimation of W - fix below i think it needs to be since the last event")
-        print("request q update")
-        self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers, request.time)
-        #self.models[self.get_period()][driver_class].observe_w(request.start_cluster, waiting_time)
-        waiting_time = self.w_estimates[request.period].last_w[request.start_cluster]
+        #print("request q update")
+        #self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers, request.time)
+        #waiting_time = self.w_estimates[request.period].last_w[request.start_cluster]
         remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.net_fare_cents, n_drivers, request.time, waiting_time)
         self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
         self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
@@ -120,8 +116,8 @@ class Simulator:
         # check the action of the driver and increment self.drivers appropriately
         #raise Exception("do")
         period = self.get_period()
-
-        action = self.models[period][_class].decide(cluster)
+        self.clean_queue(cluster, self.t)
+        action = self.models[period][_class].decide(cluster, self.t)
 
         if action == -1:
             # vehicle leaves the system
@@ -133,7 +129,7 @@ class Simulator:
             self.drivers[cluster][_class].append(self.t)
             self.controller.report_event(cluster, self.t, n_drivers)
             self.w_estimates[period].report_q_len(cluster, n_drivers, self.t)
-            self.w_estimates[period].report_arrival(cluster)
+            self.w_estimates[period].report_arrival(cluster, self.t)
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")
@@ -189,7 +185,8 @@ if __name__ == "__main__":
     print("The big issue to fix now is that the V values seem identical across all clusters")
     print("I also think the cents vs dollars is a bit out of wack.")
     input("Trimmed the number of bellman iterations dramatically to speed things up")
-    input("Use max when Q values are too large")
+    input("Need to finally fix waiting time inflation. Moving exploration to a constant")
+    #input("Re-assigning bumped jobs")
     reqs = trip_reqs.get_trip_requests()
     simulator = Simulator(reqs, 16, 16, 8)
     while not simulator.is_stopped():

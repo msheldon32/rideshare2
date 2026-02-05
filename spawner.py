@@ -15,7 +15,7 @@ class Spawner:
             for row in reader:
                 period = int(row["period"])
                 cluster = int(row["start"])
-                rate = float(row["new_arrivals"])#*5
+                rate = float(row["new_arrivals"])
                 self.rates[period][cluster][cluster] = rate
                 self.total_period_rates[period] += rate
 
