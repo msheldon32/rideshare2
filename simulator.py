@@ -26,13 +26,16 @@ class Simulator:
         q_acc = [0 for i in range(N_CLUSTERS)]
         q_reports = [[] for i in range(N_CLUSTERS)]
 
+        q_history = model.QHistory(q_reports)
+
         if models is None:
-            self.w_estimates = [model.WEstimates(last_t, q_acc, q_reports) for period in range(n_periods)]
+            self.w_estimates = [model.WEstimates(last_t, q_acc, q_history) for period in range(n_periods)]
             self.exploration = [model.Exploration() for period in range(n_periods)]
             self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
         else:
             self.models = models
-            self.w_estimates = [x[0].w_estimates for x in self.models]
+            self.w_estimates = [model.WEstimates(last_t, q_acc, q_history) for period in range(n_periods)]
+            #self.w_estimates = [x[0].w_estimates for x in self.models]
             self.exploration = [x[0].exploration for x in self.models]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
@@ -46,7 +49,13 @@ class Simulator:
         self.next_events = [(0, "r", self.requests[0])]
         self.next_req = 1
 
-        heapq.heappush(self.next_events, self.spawner.get_spawn(0))
+        #heapq.heappush(self.next_events, self.spawner.get_spawn(0))
+        for spawn in self.spawner.spawn_events:
+            heapq.heappush(self.next_events, self.spawner.get_spawn_event(spawn))
+
+        for req in self.requests:
+            #heapq.heappush(self.next_events, (next_request.time, "r", next_request))
+            heapq.heappush(self.next_events, (req.time, "r", req))
 
     def reset(self):
         self.observer.reset()
@@ -74,20 +83,20 @@ class Simulator:
     def clean_queue(self, cluster, time):
         old_driver_ct = 0
         period = get_period(time)
-        # remove any drivers that have been in the queue for more than 3 hours
+        new_driver_ct = 0
+        # remove any drivers that have been in the queue for more than 2 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 3]
-            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 3]
-        self.w_estimates[period].report_q_len(cluster, old_driver_ct, time)
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
+            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
+            new_driver_ct += len(self.drivers[cluster][_class])
+        self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
 
     def process_request(self, request):
         if self.next_req < len(self.requests):
-            next_request = self.requests[self.next_req]
-            heapq.heappush(self.next_events, (next_request.time, "r", next_request))
+            #next_request = self.requests[self.next_req]
+            #heapq.heappush(self.next_events, (next_request.time, "r", next_request))
             self.next_req += 1
-
-        self.clean_queue(request.start_cluster, request.time)
 
         # check if a driver is available, and find the class if so
         driver_counts = [len(x) for x in self.drivers[request.start_cluster]]
@@ -99,13 +108,17 @@ class Simulator:
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
         self.controller.report_event(request.start_cluster, request.time, n_drivers)
 
+
         # expel a random driver from the queue
         driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))
         waiting_time = self.drivers[request.start_cluster][driver_class][driver_idx]
         del self.drivers[request.start_cluster][driver_class][driver_idx]
 
+        #self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers-1, self.t)
+
+        self.clean_queue(request.start_cluster, request.time)
+
         #print("request q update")
-        #self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers, request.time)
         #waiting_time = self.w_estimates[request.period].last_w[request.start_cluster]
         remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.net_fare_cents, n_drivers, request.time, waiting_time)
         self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
@@ -131,9 +144,12 @@ class Simulator:
             print(f"leaving the system.")
             return
         if action == cluster:
+            #driver_counts = [len(x) for x in self.drivers[cluster]]
+            #n_drivers = sum(driver_counts)
+            #if n_drivers < 10:
+            self.drivers[cluster][_class].append(self.t)
             driver_counts = [len(x) for x in self.drivers[cluster]]
             n_drivers = sum(driver_counts)
-            self.drivers[cluster][_class].append(self.t)
             self.controller.report_event(cluster, self.t, n_drivers)
             self.w_estimates[period].report_q_len(cluster, n_drivers, self.t)
             self.w_estimates[period].report_arrival(cluster, self.t)

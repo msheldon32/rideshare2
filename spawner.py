@@ -31,6 +31,10 @@ class Spawner:
                 t = t - 900  # arrive 15 minutes early
                 self.spawn_events.append((t, int(row["period"]), int(row["cluster"])))
 
+        #self.spawn_events.sort()
+
+
+
     def get_cluster_class(self, period):
         prob = random.random()
         acc = 0
@@ -72,3 +76,8 @@ class Spawner:
 
     def get_spawn(self, start_t):
         return self.get_spawn_data(start_t)
+    def get_spawn_event(self, spawn):
+        t = spawn[0]
+        cluster = spawn[2]
+
+        return (t, "s", Spawn(t, cluster, cluster))

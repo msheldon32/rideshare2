@@ -3,27 +3,15 @@ from util import *
 import random
 import csv
 
-class WEstimates:
-    def __init__(self, last_t, q_acc, q_reports):
-        self.w_estimates = [0 for i in range(N_CLUSTERS)]
-        self.alpha_w = 0.8
-        self.q_acc = q_acc
-        self.last_t = last_t
-        self.last_w = [0 for i in range(N_CLUSTERS)]
+class QHistory:
+    def __init__(self, q_reports):
         self.q_reports = q_reports
         self.arrivals = [[] for i in range(N_CLUSTERS)]
 
-        input("W values are sometimes negative, look into this")
-        input("Check to make sure this interacts well with the new spawner (also they're negative at points)")
-
-        self.time_window = 2  # lookback time for w
-
-    def observe_w(self, cluster, w):
-        old_w = self.w_estimates[cluster]
-        new_w = self.alpha_w*old_w + (1-self.alpha_w)*w
-
-        self.w_estimates[cluster] = new_w
-        self.last_w[cluster] = w
+    def get_q_len(self, cluster):
+        if len(self.q_reports[cluster]) == 0:
+            return 0
+        return self.q_reports[cluster][-1][2]
 
     def get_expected_w(self, cluster, t):
         # look backward to get the number of arrivals
@@ -54,11 +42,15 @@ class WEstimates:
             last_t = qr[i][0]
 
         #self.q_reports[cluster] = self.q_reports[cluster][:to_cut]
+        
+        #if qt < 0:
+        #    print(self.q_reports[cluster])
+        #    print(qt)
+        #    raise Exception("stop")
 
         if n_arrivals == 0:
             # *shrugs*
             return 0
-        
         return qt/n_arrivals
 
     def report_q_len(self, cluster, q_len, t):
@@ -70,9 +62,44 @@ class WEstimates:
     def report_arrival(self, cluster, t):
         self.arrivals[cluster].append(t)
 
+class WEstimates:
+    def __init__(self, last_t, q_acc, q_reports, q_history):
+        self.w_estimates = [0 for i in range(N_CLUSTERS)]
+        self.alpha_w = 0.8
+        self.q_acc = q_acc
+        self.last_t = last_t
+        self.last_w = [0 for i in range(N_CLUSTERS)]
+
+        self.time_window = 2  # lookback time for w
+
+        self.q_history = q_history
+
+
+    def observe_w(self, cluster, w):
+        old_w = self.w_estimates[cluster]
+        new_w = self.alpha_w*old_w + (1-self.alpha_w)*w
+
+        self.w_estimates[cluster] = new_w
+        self.last_w[cluster] = w
+
+    def get_q_len(self, cluster):
+        return self.q_history.get_q_len(cluster)
+
+    def get_expected_w(self, cluster, t):
+        exp_w = self.q_history.get_expected_w(cluster, t)
+        self.observe_w(cluster, exp_w)
+
+        return self.w_estimates[cluster]
+
+    def report_q_len(self, cluster, q_len, t):
+        self.q_history.report_q_len(cluster, q_len, t)
+
+    def report_arrival(self, cluster, t):
+        self.q_history.report_arrival(cluster, t)
+
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 1.0#10.0
+        self.boltzmann_tau = 0.5#1.0#10.0
         self.min_boltzmann = 0.5
         self.boltzmann_decay = 0.99995
 
@@ -206,6 +233,7 @@ class DriverModel:
         print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
         print(f"({cluster}) r_estimates: {self.r_estimates}")
         print(f"({cluster}) w_estimates: {[self.w_estimates.get_expected_w(x,t) for x in range(N_CLUSTERS)]}")
+        print(f"({cluster}) Q values: {[self.w_estimates.get_q_len(x) for x in range(N_CLUSTERS)]}")
 
         tau = self.exploration.boltzmann_tau
         unnorm_probs = [q/tau for q in q_values[cluster]]
