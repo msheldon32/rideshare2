@@ -65,7 +65,7 @@ class Simulator:
 
         # it should be noted that this preserves the heap
         self.next_events = [(a-epoch, b, c) for a,b,c in self.next_events]
-        heapq.heappush(self.next_events, self.spawner.get_spawn(0))
+        #heapq.heappush(self.next_events, self.spawner.get_spawn(0))
 
         self.t = 0
         self.next_events.append((0, "r", self.requests[0]))
@@ -186,7 +186,7 @@ class Simulator:
         self.decide(event.cluster, event._class)
 
         # ask the spawner to spawn another event
-        heapq.heappush(self.next_events, self.spawner.get_spawn(self.t))
+        #heapq.heappush(self.next_events, self.spawner.get_spawn(self.t))
 
     def step(self):
         event_t, event_type, event = heapq.heappop(self.next_events)
