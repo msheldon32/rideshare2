@@ -13,7 +13,10 @@ class WEstimates:
         self.q_reports = q_reports
         self.arrivals = []
 
-        self.time_window = 2  # lookback time for w
+        input("W values are sometimes negative, look into this")
+        input("Check to make sure this interacts well with the new spawner (also they're negative at points)")
+
+        self.time_window = 120  # lookback time for w
 
     def observe_w(self, cluster, w):
         old_w = self.w_estimates[cluster]
@@ -55,13 +58,6 @@ class WEstimates:
         self.q_reports[cluster].append((t, time_spent, q_len))
 
     def report_arrival(self, cluster, t):
-        # note to do this after reporting the q length
-        #if random.random() < 0.01:
-        #    raise Exception("stop - W estimates are clearly inflated")
-        #self.q_reports[cluster] = []
-        #self.q_reports[cluster].append(("waiting_time", self.q_acc[cluster]))
-        #self.observe_w(cluster, self.q_acc[cluster])
-        #self.q_acc[cluster] = 0
         self.arrivals.append(t)
 
 class Exploration:

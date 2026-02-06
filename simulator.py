@@ -14,7 +14,7 @@ import model
 from util import *
 
 class Simulator:
-    def __init__(self, requests, n_classes, n_clusters, n_periods):
+    def __init__(self, requests, n_classes, n_clusters, n_periods, epoch):
         self.requests = requests
         self.n_classes = n_classes
         self.n_clusters = n_clusters
@@ -33,7 +33,7 @@ class Simulator:
 
         self.t = 0
 
-        self.spawner = spawner.Spawner()
+        self.spawner = spawner.Spawner(epoch)
         self.controller = controller.Controller()
         self.observer = observer.Observer()
 
@@ -44,11 +44,13 @@ class Simulator:
 
     def reset(self):
         self.observer.reset()
+        self.spawner.reset()
         self.next_req = 1
         epoch = self.t
 
         # it should be noted that this preserves the heap
         self.next_events = [(a-epoch, b, c) for a,b,c in self.next_events]
+        heapq.heappush(self.next_events, self.spawner.get_spawn(0))
 
         self.t = 0
         self.next_events.append((0, "r", self.requests[0]))
@@ -67,11 +69,11 @@ class Simulator:
     def clean_queue(self, cluster, time):
         old_driver_ct = 0
         period = get_period(time)
-        # remove any drivers that have been in the queue for more than 2 hours
+        # remove any drivers that have been in the queue for more than 3 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
-            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 180]
+            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 180]
         self.w_estimates[period].report_q_len(cluster, old_driver_ct, time)
 
     def process_request(self, request):
@@ -187,8 +189,8 @@ if __name__ == "__main__":
     input("Trimmed the number of bellman iterations dramatically to speed things up")
     input("Need to finally fix waiting time inflation. Moving exploration to a constant")
     #input("Re-assigning bumped jobs")
-    reqs = trip_reqs.get_trip_requests()
-    simulator = Simulator(reqs, 16, 16, 8)
+    reqs, epoch = trip_reqs.get_trip_requests()
+    simulator = Simulator(reqs, 16, 16, 8, epoch)
     while not simulator.is_stopped():
         simulator.step()
     simulator.reset()

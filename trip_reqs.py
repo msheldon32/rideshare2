@@ -47,4 +47,4 @@ def get_trip_requests():
             Request((r[0] - epoch).total_seconds()/(3600), r[1], r[2], r[3], r[4], r[5]) for r in out_reqs
             ]
 
-    return out_reqs
+    return out_reqs, epoch
