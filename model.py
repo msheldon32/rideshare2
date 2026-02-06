@@ -11,7 +11,7 @@ class WEstimates:
         self.last_t = last_t
         self.last_w = [0 for i in range(N_CLUSTERS)]
         self.q_reports = q_reports
-        self.arrivals = []
+        self.arrivals = [0 for i in range(N_CLUSTERS)]
 
         input("W values are sometimes negative, look into this")
         input("Check to make sure this interacts well with the new spawner (also they're negative at points)")
@@ -28,22 +28,32 @@ class WEstimates:
     def get_expected_w(self, cluster, t):
         # look backward to get the number of arrivals
         n_arrivals = 0
-        for r in range(0,len(self.arrivals)):
-            i = len(self.arrivals)-1-r
-            if self.arrivals[i] < t-self.time_window:
+        to_cut = 0
+        for r in range(0,len(self.arrivals[cluster])):
+            i = len(self.arrivals[cluster])-1-r
+            if self.arrivals[cluster][i] < t-self.time_window:
+                to_cut = i
                 break
             n_arrivals += 1
+
+        self.arrivals[cluster] = self.arrivals[cluster][:to_cut]
 
         qt = 0
         last_t = t
         qr = self.q_reports[cluster]
+
+        to_cut = 0
+
         for r in range(0, len(qr)):
             i = len(qr)-1-r
             if qr[i][0] < t-self.time_window:
                 qt += (last_t - (t-self.time_window))*qr[i][2]
+                to_cut = i
                 break
             qt += (last_t - qr[i][0])*qr[i][2]
             last_t = qr[i][0]
+
+        self.q_reports[cluster] = self.q_reports[cluster][:to_cut]
 
         if n_arrivals == 0:
             # *shrugs*
@@ -58,7 +68,7 @@ class WEstimates:
         self.q_reports[cluster].append((t, time_spent, q_len))
 
     def report_arrival(self, cluster, t):
-        self.arrivals.append(t)
+        self.arrivals[cluster].append(t)
 
 class Exploration:
     def __init__(self):

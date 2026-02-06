@@ -199,7 +199,7 @@ if __name__ == "__main__":
     while not simulator.is_stopped():
         simulator.step()
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, simulator.models)
+    simulator = Simulator(reqs, 16, 16, 8, epoch, models=simulator.models)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
