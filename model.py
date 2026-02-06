@@ -16,7 +16,7 @@ class WEstimates:
         input("W values are sometimes negative, look into this")
         input("Check to make sure this interacts well with the new spawner (also they're negative at points)")
 
-        self.time_window = 120  # lookback time for w
+        self.time_window = 2  # lookback time for w
 
     def observe_w(self, cluster, w):
         old_w = self.w_estimates[cluster]

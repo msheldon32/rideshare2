@@ -72,8 +72,8 @@ class Simulator:
         # remove any drivers that have been in the queue for more than 3 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 180]
-            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 180]
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 3]
+            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 3]
         self.w_estimates[period].report_q_len(cluster, old_driver_ct, time)
 
     def process_request(self, request):
