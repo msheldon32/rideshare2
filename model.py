@@ -11,7 +11,7 @@ class WEstimates:
         self.last_t = last_t
         self.last_w = [0 for i in range(N_CLUSTERS)]
         self.q_reports = q_reports
-        self.arrivals = [0 for i in range(N_CLUSTERS)]
+        self.arrivals = [[] for i in range(N_CLUSTERS)]
 
         input("W values are sometimes negative, look into this")
         input("Check to make sure this interacts well with the new spawner (also they're negative at points)")
@@ -36,7 +36,7 @@ class WEstimates:
                 break
             n_arrivals += 1
 
-        self.arrivals[cluster] = self.arrivals[cluster][:to_cut]
+        #self.arrivals[cluster] = self.arrivals[cluster][:to_cut]
 
         qt = 0
         last_t = t
@@ -53,7 +53,7 @@ class WEstimates:
             qt += (last_t - qr[i][0])*qr[i][2]
             last_t = qr[i][0]
 
-        self.q_reports[cluster] = self.q_reports[cluster][:to_cut]
+        #self.q_reports[cluster] = self.q_reports[cluster][:to_cut]
 
         if n_arrivals == 0:
             # *shrugs*
