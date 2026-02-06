@@ -14,7 +14,7 @@ import model
 from util import *
 
 class Simulator:
-    def __init__(self, requests, n_classes, n_clusters, n_periods, epoch):
+    def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, models=None):
         self.requests = requests
         self.n_classes = n_classes
         self.n_clusters = n_clusters
@@ -25,9 +25,15 @@ class Simulator:
         last_t = [0 for i in range(N_CLUSTERS)]
         q_acc = [0 for i in range(N_CLUSTERS)]
         q_reports = [[] for i in range(N_CLUSTERS)]
-        self.w_estimates = [model.WEstimates(last_t, q_acc, q_reports) for period in range(n_periods)]
-        self.exploration = [model.Exploration() for period in range(n_periods)]
-        self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
+
+        if models is None:
+            self.w_estimates = [model.WEstimates(last_t, q_acc, q_reports) for period in range(n_periods)]
+            self.exploration = [model.Exploration() for period in range(n_periods)]
+            self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
+        else:
+            self.models = models
+            self.w_estimates = [x[0].w_estimates for x in self.models]
+            self.exploration = [x[0].exploration for x in self.models]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 
@@ -54,7 +60,6 @@ class Simulator:
 
         self.t = 0
         self.next_events.append((0, "r", self.requests[0]))
-
 
         for j in range(self.n_clusters):
             for i in range(self.n_classes):
@@ -193,7 +198,8 @@ if __name__ == "__main__":
     simulator = Simulator(reqs, 16, 16, 8, epoch)
     while not simulator.is_stopped():
         simulator.step()
-    simulator.reset()
+
+    simulator = Simulator(reqs, 16, 16, 8, epoch, simulator.models)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
