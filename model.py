@@ -7,6 +7,7 @@ class QHistory:
     def __init__(self, q_reports):
         self.q_reports = q_reports
         self.arrivals = [[] for i in range(N_CLUSTERS)]
+        self.time_window = 2
 
     def get_q_len(self, cluster):
         if len(self.q_reports[cluster]) == 0:
@@ -54,18 +55,15 @@ class QHistory:
         return qt/n_arrivals
 
     def report_q_len(self, cluster, q_len, t):
-        time_spent = t-self.last_t[cluster]
-        self.q_acc[cluster] += (q_len*time_spent)
-        self.last_t[cluster] = t
-        self.q_reports[cluster].append((t, time_spent, q_len))
+        self.q_reports[cluster].append((t, 0, q_len))
 
     def report_arrival(self, cluster, t):
         self.arrivals[cluster].append(t)
 
 class WEstimates:
-    def __init__(self, last_t, q_acc, q_reports, q_history):
+    def __init__(self, last_t, q_acc, q_history):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
-        self.alpha_w = 0.8
+        self.alpha_w = 0.95
         self.q_acc = q_acc
         self.last_t = last_t
         self.last_w = [0 for i in range(N_CLUSTERS)]

@@ -182,6 +182,7 @@ class Simulator:
         self.decide(event.cluster, event._class)
 
     def process_spawn(self, event):
+        input("spawning")
         self.decide(event.cluster, event._class)
 
         # ask the spawner to spawn another event
