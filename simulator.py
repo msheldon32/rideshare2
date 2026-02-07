@@ -35,10 +35,11 @@ class Simulator:
         else:
             self.models = models
             self.w_estimates = [model.WEstimates(last_t, q_acc, q_history) for period in range(n_periods)]
-            for i, x in self.w_estimates:
+            for i, x in enumerate(self.w_estimates):
                 # keep the point estimates of W, scrap the history
-                self.w_estimates[i].w_estimates = self.models[i].w_estimates.w_estimates
-                self.models[i].w_estimates = x
+                self.w_estimates[i].w_estimates = self.models[i][0].w_estimates.w_estimates
+                for k in range(self.n_classes):
+                    self.models[i][k].w_estimates = x
             #self.w_estimates = [x[0].w_estimates for x in self.models]
             self.exploration = [x[0].exploration for x in self.models]
 
