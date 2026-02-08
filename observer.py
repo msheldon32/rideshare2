@@ -7,16 +7,14 @@ class Observer:
         self.total_requests = 0
         self.profit = 0
         self.total_reward = 0
-        self.total_trips = [0]
+        self.total_trips = 0
 
         self.trips_in_cluster = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
     
     def observe_request(self, request, remuneration, admitted):
-        self.total_requests.append(self.total_requests[-1]+1)
+        self.total_requests += 1
         if admitted:
-            self.total_trips.append(self.total_trips[-1]+1)
-
-            self.profit.append(self.profit[-1]+((request.net_fare_cents/100)-remuneration))
+            self.total_trips += 1
 
             self.trips_in_cluster[request.period][request.start_cluster] += 1
 

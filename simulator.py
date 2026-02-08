@@ -131,6 +131,11 @@ class Simulator:
         self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
         self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
 
+
+        fare = request.net_fare_cents / 100
+
+        self.observer.observe_reward(fare, fare-remuneration)
+
         #end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
         end_time = request.time + self.empirical_tt.get_sample(self.get_period(), request.start_cluster, request.end_cluster)
 
@@ -189,6 +194,12 @@ class Simulator:
 
     def process_transit(self, event):
         self.transiters[event.start_cluster][event.cluster][event._class] -= 1
+
+        # accumulate mileage cost
+        period = get_period(event.time)
+        cost = self.grid.distance_costs[period][event.start_cluster][event.cluster]
+        self.observer.observe_reward(-cost, 0)
+
         self.decide(event.cluster, event._class)
 
     def process_spawn(self, event):
@@ -199,7 +210,19 @@ class Simulator:
 
     def accumulate_rewards(self, event_t):
         # actually accumulating *costs* here, instantaneous rewards are handled elsewhere
-        pass
+        transit_cost = 0
+        dt = event_t - self.t
+        for start_cluster, x in enumerate(self.transiters):
+            for end_cluster, y in enumerate(x):
+                for _class, n in enumerate(y):
+                    transit_cost += dt*n*RESERVATION
+
+        waiting_cost = 0
+        for cluster, x in enumerate(self.drivers):
+            for _class, y in enumerate(x):
+                waiting_cost += dt*len(y)*RESERVATION
+        cost = transit_cost + waiting_cost
+        self.observer.observe_reward(-cost, 0)
 
     def step(self):
         event_t, event_type, event = heapq.heappop(self.next_events)
@@ -235,7 +258,7 @@ if __name__ == "__main__":
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
-    print(f"Total trips: {sim_observer.total_trips[-1]}")
-    print(f"Total requests: {sim_observer.total_requests[-1]}")
-    print(f"Net profit: {sim_observer.profit[-1]}")
+    print(f"Total trips: {sim_observer.total_trips}")
+    print(f"Total requests: {sim_observer.total_requests}")
+    print(f"Net profit: {sim_observer.profit}")
     sim_observer.save_trip_counts("trip_counts.csv")
