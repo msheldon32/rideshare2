@@ -139,7 +139,7 @@ class Simulator:
         #end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
         end_time = request.time + self.empirical_tt.get_sample(self.get_period(), request.start_cluster, request.end_cluster)
 
-        self.transiters[event.start_cluster][event.cluster][event._class] += 1
+        self.transiters[request.start_cluster][request.end_cluster][driver_class] += 1
         arrival = Arrival(end_time, request.start_cluster, request.end_cluster, driver_class)
         heapq.heappush(self.next_events, (end_time, "a", arrival))
 
