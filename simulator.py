@@ -45,6 +45,8 @@ class Simulator:
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 
+        self.transiters = [[[0 for k in range(n_classes)] for j in range(n_clusters)] for l in range(n_clusters)]
+
         self.t = 0
 
         self.spawner = spawner.Spawner(epoch)
@@ -164,6 +166,8 @@ class Simulator:
             #end_time = self.t + self.grid.get_travel_time(cluster, action, self.get_period())
             end_time = self.t + self.empirical_tt.get_sample(self.get_period(), cluster, action)
 
+            self.transiters[cluster][action][_class] += 1
+
             arrival = Arrival(end_time, cluster, action, _class)
             heapq.heappush(self.next_events, (end_time, "t", arrival))
 
@@ -184,6 +188,7 @@ class Simulator:
         self.decide(event.cluster, driver_class)
 
     def process_transit(self, event):
+        self.transiters[event.start_cluster][event.cluster][event._class] -= 1
         self.decide(event.cluster, event._class)
 
     def process_spawn(self, event):
@@ -192,8 +197,14 @@ class Simulator:
         # ask the spawner to spawn another event
         #heapq.heappush(self.next_events, self.spawner.get_spawn(self.t))
 
+    def accumulate_rewards(self, event_t):
+        # actually accumulating *costs* here, instantaneous rewards are handled elsewhere
+        pass
+
     def step(self):
         event_t, event_type, event = heapq.heappop(self.next_events)
+
+        self.accumulate_rewards(event_t)
 
         print(f"({event_t}): {event}")
 

@@ -4,8 +4,9 @@ from util import *
 
 class Observer:
     def __init__(self):
-        self.total_requests = [0]
-        self.profit = [0]
+        self.total_requests = 0
+        self.profit = 0
+        self.total_reward = 0
         self.total_trips = [0]
 
         self.trips_in_cluster = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
@@ -19,10 +20,14 @@ class Observer:
 
             self.trips_in_cluster[request.period][request.start_cluster] += 1
 
+    def observe_reward(self, total_reward, profit):
+        self.total_reward += total_reward
+        self.profit += profit
+
     def reset(self):
-        self.total_requests = [0]
-        self.profit = [0]
-        self.total_trips = [0]
+        self.total_requests = 0
+        self.profit = 0
+        self.total_trips = 0
         self.trips_in_cluster = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
 
     def save_trip_counts(self, fname):
