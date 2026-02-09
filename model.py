@@ -63,7 +63,9 @@ class QHistory:
 class WEstimates:
     def __init__(self, last_t, q_acc, q_history):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
-        self.alpha_w = 0.95
+        self.alpha_w = 0#.95
+        self.max_alpha = 0.95
+        self.alpha_inc = 0.0001
         self.q_acc = q_acc
         self.last_t = last_t
         self.last_w = [0 for i in range(N_CLUSTERS)]
@@ -76,6 +78,8 @@ class WEstimates:
     def observe_w(self, cluster, w):
         old_w = self.w_estimates[cluster]
         new_w = self.alpha_w*old_w + (1-self.alpha_w)*w
+
+        self.alpha_w = self.alpha_inc*(self.max_alpha - self.alpha_w) + self.alpha_w
 
         self.w_estimates[cluster] = new_w
         self.last_w[cluster] = w
@@ -97,8 +101,8 @@ class WEstimates:
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 0.5#1.0#10.0
-        self.min_boltzmann = 0.5
+        self.boltzmann_tau = 0.2#1.0#10.0
+        self.min_boltzmann = 0.2
         self.boltzmann_decay = 0.99995
 
     def decay(self):

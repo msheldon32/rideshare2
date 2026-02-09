@@ -8,6 +8,10 @@ class Observer:
         self.profit = 0
         self.total_reward = 0
         self.total_trips = 0
+        self.total_waiting_cost = 0
+        self.total_travel_cost = 0
+        self.total_revenue = 0
+        self.total_subsidy = 0
 
         self.trips_in_cluster = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
     

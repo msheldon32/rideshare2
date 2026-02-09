@@ -82,8 +82,8 @@ class Simulator:
                 self.drivers[j][i] = [x-epoch for x in self.drivers[j][i]]
 
     def is_stopped(self):
-        return self.next_req >= 10000
-        #return self.next_req == len(self.requests)
+        #return self.next_req >= 10000
+        return self.next_req == len(self.requests)
     
     def get_period(self):
         return get_period(self.t)
@@ -95,9 +95,9 @@ class Simulator:
         # remove any drivers that have been in the queue for more than 2 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
-            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
-            new_driver_ct += len(self.drivers[cluster][_class])
+            #expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
+            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
+            #new_driver_ct += len(self.drivers[cluster][_class])
         self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
 
     def process_request(self, request):
@@ -122,7 +122,7 @@ class Simulator:
         waiting_time = self.drivers[request.start_cluster][driver_class][driver_idx]
         del self.drivers[request.start_cluster][driver_class][driver_idx]
 
-        #self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers-1, self.t)
+        self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers-1, self.t)
 
         self.clean_queue(request.start_cluster, request.time)
 
@@ -136,8 +136,7 @@ class Simulator:
         fare = request.net_fare_cents / 100
 
         self.observer.observe_reward(fare, fare-remuneration)
-        print(f"received request, fare: {fare}, profit: {fare-remuneration}")
-        raise Exception("stop")
+        self.observer.total_revenue += fare
 
         #end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
         end_time = request.time + self.empirical_tt.get_sample(self.get_period(), request.start_cluster, request.end_cluster)
@@ -162,7 +161,7 @@ class Simulator:
         if action == cluster:
             #driver_counts = [len(x) for x in self.drivers[cluster]]
             #n_drivers = sum(driver_counts)
-            #if n_drivers < 10:
+            #if n_drivers < 50:
             self.drivers[cluster][_class].append(self.t)
             driver_counts = [len(x) for x in self.drivers[cluster]]
             n_drivers = sum(driver_counts)
@@ -198,6 +197,7 @@ class Simulator:
         self.models[self.get_period()][driver_class].observe_s(start, end, subsidy)
 
         self.observer.observe_reward(0, -subsidy)
+        self.observer.total_subsidy += subsidy
 
         # let the driver decide where to spawn
         self.decide(event.cluster, driver_class)
@@ -209,6 +209,7 @@ class Simulator:
         period = get_period(event.time)
         cost = self.grid.distance_costs[period][event.start_cluster][event.cluster]
         self.observer.observe_reward(-cost, 0)
+        self.observer.total_travel_cost += cost
 
         self.decide(event.cluster, event._class)
 
@@ -236,6 +237,9 @@ class Simulator:
         print(f"waiting cost: {waiting_cost}")
         print(f"transit cost: {transit_cost}")
         self.observer.observe_reward(-cost, 0)
+
+        self.observer.total_waiting_cost += waiting_cost
+        self.observer.total_travel_cost += transit_cost
 
     def step(self):
         event_t, event_type, event = heapq.heappop(self.next_events)
@@ -269,13 +273,21 @@ if __name__ == "__main__":
     sim_observer = simulator.observer
     print(f"Net profit: {sim_observer.profit}")
     print(f"Total reward: {sim_observer.total_reward}")
+    print(f"Total revenue: {sim_observer.total_revenue}")
+    print(f"Total waiting_cost: {sim_observer.total_waiting_cost}")
+    print(f"Total travel cost: {sim_observer.total_travel_cost}")
+    print(f"total trips: {sim_observer.total_trips}")
+    print(f"total requests: {sim_observer.total_requests}")
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, models=simulator.models)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
-    print(f"Total trips: {sim_observer.total_trips}")
-    print(f"Total requests: {sim_observer.total_requests}")
+    print(f"total trips: {sim_observer.total_trips}")
+    print(f"total requests: {sim_observer.total_requests}")
     print(f"Net profit: {sim_observer.profit}")
     print(f"Total reward: {sim_observer.total_reward}")
+    print(f"Total revenue: {sim_observer.total_revenue}")
+    print(f"Total waiting_cost: {sim_observer.total_waiting_cost}")
+    print(f"Total travel cost: {sim_observer.total_travel_cost}")
     sim_observer.save_trip_counts("trip_counts.csv")
