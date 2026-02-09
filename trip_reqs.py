@@ -32,7 +32,7 @@ def get_trip_requests():
 
             travel_distance = float(row["distance_travelled"]) / METERS_PER_MILE
             travel_cost = travel_distance * COST_PER_MILE + travel_time * RESERVATION
-            total_fare = float(row["total_fare"]) + tip - travel_cost
+            total_fare = float(row["total_fare"]) + tip - travel_cost - BOOKING_FEE
             
             if float(row["total_fare"]) + tip > 100:
                 continue
