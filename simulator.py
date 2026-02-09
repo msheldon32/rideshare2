@@ -98,7 +98,7 @@ class Simulator:
             #expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
             #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
             #new_driver_ct += len(self.drivers[cluster][_class])
-        self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
+        #self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
 
     def process_request(self, request):
         if self.next_req < len(self.requests):
