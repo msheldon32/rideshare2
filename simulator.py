@@ -22,6 +22,9 @@ class Simulator:
         self.n_clusters = n_clusters
         self.n_periods = n_periods
         self.exit_probs = exit_probs
+        
+        self.epoch = epoch
+
 
         self.grid = grid.Grid()
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
@@ -74,14 +77,14 @@ class Simulator:
         return self.next_req == len(self.requests)
 
     def get_period(self):
-        return get_period(self.t)
+        return get_period(self.t + self.epoch)
 
     def get_queue_lengths(self):
         return [sum(len(self.drivers[cluster][_class]) for _class in range(self.n_classes)) for cluster in range(self.n_clusters)]
 
     def clean_queue(self, cluster, time):
         old_driver_ct = 0
-        period = get_period(time)
+        period = get_period(time + self.epoch)
         new_driver_ct = 0
         # remove any drivers that have been in the queue for more than 5 hours
         for _class in range(len(self.drivers[cluster])):
@@ -170,7 +173,7 @@ class Simulator:
             return
 
         driver_class = event._class
-        period = get_period(event.time)
+        period = get_period(event.time + self.epoch)
         start = event.start_cluster
         end = event.cluster
 
@@ -191,7 +194,7 @@ class Simulator:
         self.transiters[event.start_cluster][event.cluster][event._class] -= 1
 
         # accumulate mileage cost
-        period = get_period(event.time)
+        period = get_period(event.time + self.epoch)
         cost = self.grid.distance_costs[period][event.start_cluster][event.cluster]
         self.observer.observe_reward(-cost, 0)
         self.observer.total_travel_cost += cost
