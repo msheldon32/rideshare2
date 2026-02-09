@@ -114,6 +114,7 @@ class Simulator:
         driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))
         waiting_time = self.drivers[request.start_cluster][driver_class][driver_idx]
         del self.drivers[request.start_cluster][driver_class][driver_idx]
+        self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
 
         self.clean_queue(request.start_cluster, request.time)
 
