@@ -46,6 +46,7 @@ class Estimator:
 
     def observe_spawn(self, location, t):
         inter_spawn = t - self.rate_tracker.last_spawn_time[location]
+
         self.inter_spawn_estimates[location] = (self.alpha_spawn * self.inter_spawn_estimates[location]) + ((1 - self.alpha_spawn) * inter_spawn)
         self.rate_tracker.last_spawn_time[location] = t
 

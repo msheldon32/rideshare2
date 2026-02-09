@@ -66,7 +66,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
 def get_policies(model_config, input_vehicle_rewards=None):
     prob, total_arrival_rates, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob(model_config, input_vehicle_rewards)
-    prob.solve()
+    prob.solve(solver=cp.SCS)
 
     n_loc = len(model_config.locations)
 
