@@ -92,15 +92,16 @@ class Simulator:
         old_driver_ct = 0
         period = get_period(time)
         new_driver_ct = 0
-        # remove any drivers that have been in the queue for more than 2 hours
+        # remove any drivers that have been in the queue for more than 5 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
-            #expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
-            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
-            #new_driver_ct += len(self.drivers[cluster][_class])
+            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
+            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
+            new_driver_ct += len(self.drivers[cluster][_class])
         #self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
 
     def process_request(self, request):
+        self.w_estimates[self.get_period()].report_request(request.start_cluster, self.t)
         if self.next_req < len(self.requests):
             #next_request = self.requests[self.next_req]
             #heapq.heappush(self.next_events, (next_request.time, "r", next_request))

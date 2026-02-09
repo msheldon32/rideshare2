@@ -7,6 +7,7 @@ class QHistory:
     def __init__(self, q_reports):
         self.q_reports = q_reports
         self.arrivals = [[] for i in range(N_CLUSTERS)]
+        self.requests = [[] for i in range(N_CLUSTERS)]
         self.time_window = 2
 
     def get_q_len(self, cluster):
@@ -14,7 +15,7 @@ class QHistory:
             return 0
         return self.q_reports[cluster][-1][2]
 
-    def get_expected_w(self, cluster, t):
+    def get_expected_w_ll(self, cluster, t):
         # look backward to get the number of arrivals
         n_arrivals = 0
         to_cut = 0
@@ -54,11 +55,78 @@ class QHistory:
             return 0
         return qt/n_arrivals
 
+    def get_expected_w_harm(self, cluster, t):
+        # look backward to get the number of arrivals
+        n_arrivals = 0
+        to_cut = 0
+        for r in range(0,len(self.arrivals[cluster])):
+            i = len(self.arrivals[cluster])-1-r
+            if self.arrivals[cluster][i] < t-self.time_window:
+                to_cut = i
+                break
+            n_arrivals += 1
+
+        n_requests = 0
+        to_cut = 0
+        for r in range(0,len(self.requests[cluster])):
+            i = len(self.requests[cluster])-1-r
+            if self.requests[cluster][i] < t-self.time_window:
+                to_cut = i
+                break
+            n_requests += 1
+
+        Z = max(n_requests - n_arrivals, 0)
+        Z /= self.time_window
+        ll_exp = self.get_expected_w_ll(cluster, t)
+
+        if ll_exp == 0:
+            if Z <= 0:
+                return 5
+            return 2/Z
+
+        """if Z <= 0:
+            # *shrugs*
+            return self.get_expected_w_ll(cluster, t)
+        
+        z_exp = 1/Z
+        return 0.5*ll_exp + 0.5*z_exp"""
+        
+        # do the harmonic mean of the ll expected value and Z
+
+        return 2/(Z + (1/ll_exp))
+
+    def get_expected_w(self, cluster, t):
+        qr = self.q_reports[cluster]
+        q = 0
+
+        if len(qr) > 0:
+            q = qr[-1][2]
+
+        n_requests = 0
+        to_cut = 0
+        for r in range(0,len(self.requests[cluster])):
+            i = len(self.requests[cluster])-1-r
+            if self.requests[cluster][i] < t-self.time_window:
+                to_cut = i
+                break
+            n_requests += 1
+
+        empirical_rate = n_requests/self.time_window
+
+        if empirical_rate == 0:
+            empirical_rate = 1
+
+        return (1 + q)/empirical_rate
+        
+
     def report_q_len(self, cluster, q_len, t):
         self.q_reports[cluster].append((t, 0, q_len))
 
     def report_arrival(self, cluster, t):
         self.arrivals[cluster].append(t)
+
+    def report_request(self, cluster, t):
+        self.requests[cluster].append(t)
 
 class WEstimates:
     def __init__(self, last_t, q_acc, q_history):
@@ -98,6 +166,9 @@ class WEstimates:
 
     def report_arrival(self, cluster, t):
         self.q_history.report_arrival(cluster, t)
+
+    def report_request(self, cluster, t):
+        self.q_history.report_request(cluster, t)
 
 class Exploration:
     def __init__(self):
