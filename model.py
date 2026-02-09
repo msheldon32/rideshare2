@@ -109,7 +109,7 @@ class QHistory:
             if self.requests[cluster][i] < t-self.time_window:
                 to_cut = i
                 break
-            n_requests += 1
+            n_req890uests += 1
 
         empirical_rate = n_requests/self.time_window
 
@@ -142,7 +142,7 @@ class WEstimates:
     def __init__(self, last_t, q_acc, q_history):
         self.w_estimates = [1 for i in range(N_CLUSTERS)]
         self.alpha_w = 0#.95
-        self.max_alpha = 0.9
+        self.max_alpha = 0.95
         self.alpha_inc = 0.0001
         self.q_acc = q_acc
         self.last_t = last_t
@@ -174,13 +174,6 @@ class WEstimates:
         exp_w = (1 + exp_q)*self.request_estimates[cluster]
         self.observe_w(cluster, exp_w)
 
-        
-        #print(f"period: {get_period(t)}")
-        #print(f"cluster: {cluster}")
-        #print(f"exp_w: {exp_w}")
-        #print(f"exp_q: {exp_q}")
-        #print(f"request estimate: {self.request_estimates[cluster]}")
-
         return self.w_estimates[cluster]
 
     def report_q_len(self, cluster, q_len, t):
@@ -198,8 +191,8 @@ class WEstimates:
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 0.2#1.0#10.0
-        self.min_boltzmann = 0.2
+        self.boltzmann_tau = 0.3#1.0#10.0
+        self.min_boltzmann = 0.3
         self.boltzmann_decay = 0.99995
 
     def decay(self):

@@ -39,6 +39,9 @@ class Simulator:
                 # keep the point estimates of W, scrap the history
                 self.w_estimates[i].w_estimates = self.models[i][0].w_estimates.w_estimates
                 self.w_estimates[i].alpha_w = self.models[i][0].w_estimates.alpha_w
+                self.w_estimates[i].request_estimates = self.models[i][0].w_estimates.request_estimates
+                self.w_estimates[i].request_alpha = self.models[i][0].w_estimates.request_alpha
+
                 for k in range(self.n_classes):
                     self.models[i][k].w_estimates = x
             #self.w_estimates = [x[0].w_estimates for x in self.models]
