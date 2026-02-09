@@ -49,7 +49,9 @@ class Simulator:
         self.last_policy_update = 0
 
         self.spawner = spawner.Spawner(epoch)
-        self.controller = controller.Controller()
+        #self.controller = controller.Controller()
+        self.controller = controller.MethodController(0, self.grid)
+        input("using method controller")
         self.observer = observer.Observer()
 
         self.next_events = []#(0, "r", self.requests[0])]
@@ -92,10 +94,11 @@ class Simulator:
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
-            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
             new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
+        self.clean_queue(request.start_cluster, self.t)
         self.estimators[self.get_period()].observe_service(request.start_cluster, self.t)
         self.estimators[self.get_period()].observe_transition(request.start_cluster, request.end_cluster)
 
@@ -241,6 +244,7 @@ class Simulator:
         if event_t - self.t > 10:
             # skipping weekends
             self.rate_tracker.reset(event_t)
+            self.controller.reset(event_t)
         else:
             self.accumulate_rewards(event_t)
 

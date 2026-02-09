@@ -17,6 +17,9 @@ class Controller:
     def report_event(self, cluster, time, driver_ct):
         pass
 
+    def reset(self, t):
+        pass
+
 class MethodController:
     def __init__(self, alpha, grid):
         self.alpha = alpha
@@ -25,8 +28,8 @@ class MethodController:
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
     def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
-        total_opt = fare - self.last_tax[start_cluster]*RESERVATION
-        profit_max = waiting_time + self.grid.get_travel_cost(_class, end_cluster, _class) - self.grid.get_travel_cost(_class, start_cluster, _class)
+        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
+        profit_max = waiting_time + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
         return (1-self.alpha)*total_opt + self.alpha*profit_max
 
@@ -38,3 +41,6 @@ class MethodController:
         self.last_tax[cluster] = tax
 
         self.last_t[cluster] = time
+
+    def reset(self, t):
+        self.last_t = [t for i in range(N_CLUSTERS)]
