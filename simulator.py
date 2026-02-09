@@ -100,9 +100,9 @@ class Simulator:
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
+            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
             new_driver_ct += len(self.drivers[cluster][_class])
-        self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
+        #self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
 
     def process_request(self, request):
         self.w_estimates[self.get_period()].report_request(request.start_cluster, self.t)

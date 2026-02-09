@@ -152,7 +152,7 @@ class WEstimates:
 
         self.q_history = q_history
 
-        self.request_alpha = 0.95
+        self.request_alpha = 0.9
         self.request_estimates = [1 for i in range(N_CLUSTERS)]
 
 
@@ -191,8 +191,8 @@ class WEstimates:
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 0.3#1.0#10.0
-        self.min_boltzmann = 0.3
+        self.boltzmann_tau = 0.5#1.0#10.0
+        self.min_boltzmann = 0.5
         self.boltzmann_decay = 0.99995
 
     def decay(self):
@@ -325,9 +325,9 @@ class DriverModel:
         print(f"period: {self.period}")
         print(f"({cluster}) q_values: {q_values[cluster]}")
         print(f"({cluster}) v_values: {v_values}")
-        print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
+        #print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
         print(f"({cluster}) r_estimates: {self.r_estimates}")
-        print(f"({cluster}) w_estimates: {[self.w_estimates.get_expected_w(x,t) for x in range(N_CLUSTERS)]}")
+        print(f"({cluster}) w_estimates: {[self.w_estimates.w_estimates[x] for x in range(N_CLUSTERS)]}")
         print(f"({cluster}) Q values: {[self.w_estimates.get_q_len(x) for x in range(N_CLUSTERS)]}")
 
         tau = self.exploration.boltzmann_tau
