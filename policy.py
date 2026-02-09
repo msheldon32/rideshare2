@@ -25,18 +25,18 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     for k in range(n_loc):
         for i in range(n_loc):
             expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_prepaid_cost(k, i, j) for j in range(n_loc)])
-            vehicle_utilities[k][i] = (expected_tt_difference + vehicle_rewards[k][i]) / model_config.reservation
+            vehicle_utilities[k][i] = (expected_tt_difference + vehicle_rewards[k][i])
 
     # objective function: minimize the travel time multiplied by the flow minus the log of (service rate - total arrival rate across all origins)
     obj = 0
     for k in range(n_loc):
         for i in range(n_loc):
             for j in range(n_loc):
-                travel_cost = model_config.get_prepaid_cost(k, i, j) / model_config.reservation
+                travel_cost = model_config.get_prepaid_cost(k, i, j)
                 obj += travel_cost * flows_between_locations[k][i,j]
 
     for i in range(n_loc):
-        obj -= cp.log(model_config.service_rates[i] - total_arrival_rates[i])
+        obj -= cp.log(model_config.service_rates[i] - total_arrival_rates[i]) * model_config.reservation
 
     for i in range(n_loc):
         for k in range(n_loc):

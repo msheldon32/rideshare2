@@ -50,3 +50,11 @@ def get_trip_requests():
             ]
 
     return out_reqs, epoch
+
+if __name__ == "__main__":
+    reqs, _ = get_trip_requests()
+
+    for req in reqs:
+        print(req)
+        input("continue")
+
