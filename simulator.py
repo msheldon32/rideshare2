@@ -3,6 +3,7 @@ import pandas as pd
 import random
 import heapq
 import math
+import csv
 
 import trip_reqs
 import spawner
@@ -72,7 +73,6 @@ class Simulator:
             for _class in range(self.n_classes):
                 self.models[period][_class] = model.DriverModel(new_policies[_class], self.exit_probs[period])
         self.last_policy_update = self.t
-        input("continue...")
 
     def is_stopped(self):
         #return self.next_req >= 10000
@@ -259,11 +259,34 @@ class Simulator:
         elif event_type == "t":
             self.process_transit(event)
 
+def get_exit_probs():
+    exit_probs = [1.0] * N_PERIODS
+
+    for period in range(N_PERIODS):
+        arrivals = [0 for i in range(N_CLUSTERS)]
+
+        # get the exit prob for the current time period
+        with open("data/arrival_rates.csv") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                if int(row["period"]) == period:
+                    cluster = int(row["start"])
+                    arrivals[cluster] = float(row["arrivals"])
+
+        with open("data/exit_rates.csv") as csvfile:
+            reader = csv.DictReader(csvfile)
+
+            for row in reader:
+                if int(row["period"]) == period:
+                    cluster = int(row["start"])
+                    exit_rate = float(row["exits"])
+                    exit_probs[period] = min(exit_probs[period], exit_rate/arrivals[cluster])
+    return exit_probs
+
 
 if __name__ == "__main__":
     reqs, epoch = trip_reqs.get_trip_requests()
-    input("fix the exit_probs but later")
-    exit_probs = [0.4] * N_PERIODS
+    exit_probs = get_exit_probs()
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
     while not simulator.is_stopped():
@@ -276,16 +299,16 @@ if __name__ == "__main__":
     print(f"Total travel cost: {sim_observer.total_travel_cost}")
     print(f"total trips: {sim_observer.total_trips}")
     print(f"total requests: {sim_observer.total_requests}")
-
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
-    while not simulator.is_stopped():
-        simulator.step()
-    sim_observer = simulator.observer
-    print(f"total trips: {sim_observer.total_trips}")
-    print(f"total requests: {sim_observer.total_requests}")
-    print(f"Net profit: {sim_observer.profit}")
-    print(f"Total reward: {sim_observer.total_reward}")
-    print(f"Total revenue: {sim_observer.total_revenue}")
-    print(f"Total waiting_cost: {sim_observer.total_waiting_cost}")
-    print(f"Total travel cost: {sim_observer.total_travel_cost}")
     sim_observer.save_trip_counts("trip_counts.csv")
+
+    """simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
+    while not simulator.is_stopped():
+        simulator.step()
+    sim_observer = simulator.observer
+    print(f"total trips: {sim_observer.total_trips}")
+    print(f"total requests: {sim_observer.total_requests}")
+    print(f"Net profit: {sim_observer.profit}")
+    print(f"Total reward: {sim_observer.total_reward}")
+    print(f"Total revenue: {sim_observer.total_revenue}")
+    print(f"Total waiting_cost: {sim_observer.total_waiting_cost}")
+    print(f"Total travel cost: {sim_observer.total_travel_cost}")"""
