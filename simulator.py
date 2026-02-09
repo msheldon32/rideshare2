@@ -29,9 +29,9 @@ class Simulator:
         # one estimator per period
         self.estimators = [estimator.Estimator(self.grid, period) for period in range(n_periods)]
 
-        # initialize models with random uniform policies
-        uniform_policy = [[(1.0 / (n_clusters + 1)) for _ in range(n_clusters + 1)] for _ in range(n_clusters)]
-        self.models = [[model.DriverModel(uniform_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
+        # default policy: always enter the queue at the current location
+        default_policy = [([0.0] * i + [1.0] + [0.0] * (n_clusters - i)) for i in range(n_clusters)]
+        self.models = [[model.DriverModel(default_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 
@@ -100,6 +100,8 @@ class Simulator:
             new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
+        self.estimators[self.get_period()].observe_service(request.start_cluster, self.t)
+
         if self.next_req < len(self.requests):
             #next_request = self.requests[self.next_req]
             #heapq.heappush(self.next_events, (next_request.time, "r", next_request))
@@ -112,6 +114,7 @@ class Simulator:
         if n_drivers == 0:
             self.observer.observe_request(request, None, False)
             return
+
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
         self.controller.report_event(request.start_cluster, request.time, n_drivers)
 
@@ -130,7 +133,6 @@ class Simulator:
         # estimator observations
         self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, remuneration)
         self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
-        self.estimators[self.get_period()].observe_service(request.start_cluster, self.t)
         self.estimators[self.get_period()].observe_transition(request.start_cluster, request.end_cluster)
 
         self.observer.observe_reward(fare, fare-remuneration)

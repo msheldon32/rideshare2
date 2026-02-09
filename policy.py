@@ -1,3 +1,4 @@
+import cvxpy as cp 
 
 def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     if input_vehicle_rewards is None:
