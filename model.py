@@ -175,11 +175,11 @@ class WEstimates:
         self.observe_w(cluster, exp_w)
 
         
-        print(f"period: {get_period(t)}")
-        print(f"cluster: {cluster}")
-        print(f"exp_w: {exp_w}")
-        print(f"exp_q: {exp_q}")
-        print(f"request estimate: {self.request_estimates[cluster]}")
+        #print(f"period: {get_period(t)}")
+        #print(f"cluster: {cluster}")
+        #print(f"exp_w: {exp_w}")
+        #print(f"exp_q: {exp_q}")
+        #print(f"request estimate: {self.request_estimates[cluster]}")
 
         return self.w_estimates[cluster]
 
@@ -269,7 +269,10 @@ class DriverModel:
 
         for cluster in range(N_CLUSTERS):
             # cost of leaving
-            r[cluster][-1] = -self.grid.get_rebalance_cost(cluster, self.destination, self.period)
+            if cluster == self.destination:
+                r[cluster][-1] = 0
+            else:
+                r[cluster][-1] = -self.grid.get_rebalance_cost(cluster, self.destination, self.period)
 
             # cost of transiting
             for other_cluster in range(N_CLUSTERS):
