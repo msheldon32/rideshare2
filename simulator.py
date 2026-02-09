@@ -139,7 +139,7 @@ class Simulator:
         #end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
         end_time = request.time + self.empirical_tt.get_sample(self.get_period(), request.start_cluster, request.end_cluster)
 
-        self.transiters[request.start_cluster][request.end_cluster][driver_class] += 1
+        #self.transiters[request.start_cluster][request.end_cluster][driver_class] += 1
         arrival = Arrival(end_time, request.start_cluster, request.end_cluster, driver_class)
         heapq.heappush(self.next_events, (end_time, "a", arrival))
 
@@ -187,14 +187,14 @@ class Simulator:
         start = event.start_cluster
         end = event.cluster
 
-        self.transiters[event.start_cluster][event.cluster][event._class] -= 1
+        #self.transiters[event.start_cluster][event.cluster][event._class] -= 1
 
         cost = self.grid.distance_costs[period][event.start_cluster][event.cluster]
 
         subsidy = self.controller.get_subsidy(period, driver_class, start, end)
         self.models[self.get_period()][driver_class].observe_s(start, end, subsidy)
 
-        self.observer.observe_reward(-cost, -subsidy)
+        self.observer.observe_reward(0, -subsidy)
 
         # let the driver decide where to spawn
         self.decide(event.cluster, driver_class)
@@ -260,6 +260,8 @@ if __name__ == "__main__":
     simulator = Simulator(reqs, 16, 16, 8, epoch)
     while not simulator.is_stopped():
         simulator.step()
+    print(f"Net profit: {sim_observer.profit}")
+    print(f"Total reward: {sim_observer.total_reward}")
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, models=simulator.models)
     while not simulator.is_stopped():
@@ -268,4 +270,5 @@ if __name__ == "__main__":
     print(f"Total trips: {sim_observer.total_trips}")
     print(f"Total requests: {sim_observer.total_requests}")
     print(f"Net profit: {sim_observer.profit}")
+    print(f"Total reward: {sim_observer.total_reward}")
     sim_observer.save_trip_counts("trip_counts.csv")
