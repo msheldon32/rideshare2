@@ -133,6 +133,11 @@ class QHistory:
             return 0
         return self.arrivals[cluster][-1]
 
+    def last_request(self, cluster):
+        if len(self.requests[cluster]) == 0:
+            return 0
+        return self.requests[cluster][-1]
+
 class WEstimates:
     def __init__(self, last_t, q_acc, q_history):
         self.w_estimates = [1 for i in range(N_CLUSTERS)]
@@ -169,6 +174,9 @@ class WEstimates:
         exp_w = (1 + exp_q)*self.request_estimates[cluster]
         self.observe_w(cluster, exp_w)
 
+        
+        print(f"period: {get_period(t)}")
+        print(f"cluster: {cluster}")
         print(f"exp_w: {exp_w}")
         print(f"exp_q: {exp_q}")
         print(f"request estimate: {self.request_estimates[cluster]}")
@@ -261,12 +269,12 @@ class DriverModel:
 
         for cluster in range(N_CLUSTERS):
             # cost of leaving
-            r[cluster][-1] = -self.grid.get_travel_cost(cluster, self.destination, self.period)
+            r[cluster][-1] = -self.grid.get_rebalance_cost(cluster, self.destination, self.period)
 
             # cost of transiting
             for other_cluster in range(N_CLUSTERS):
                 expected_s = self.s_estimates[cluster][other_cluster]
-                r[cluster][other_cluster] = expected_s-self.grid.get_travel_cost(cluster, other_cluster, self.period)
+                r[cluster][other_cluster] = expected_s-self.grid.get_rebalance_cost(cluster, other_cluster, self.period)
 
             # cost of entering the queue
             expected_r = self.r_estimates[cluster]
