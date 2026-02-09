@@ -3,8 +3,14 @@ from model_config import ModelConfig
 
 class RateTracker:
     def __init__(self, n_locations):
+        self.n_locations = n_locations
         self.last_spawn_time = [0.0 for _ in range(n_locations)]
         self.last_service_time = [0.0 for _ in range(n_locations)]
+
+    def reset(self, t):
+        self.last_spawn_time = [t for _ in range(self.n_locations)]
+        self.last_service_time = [t for _ in range(self.n_locations)]
+
 
 class Estimator:
     def __init__(self, rate_tracker, grid, period):

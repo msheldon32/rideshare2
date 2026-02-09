@@ -225,14 +225,19 @@ class Simulator:
     def step(self):
         event_t, event_type, event = heapq.heappop(self.next_events)
 
-        self.accumulate_rewards(event_t)
 
         print(f"({event_t}): {event}")
 
+        if event_t - self.t > 10:
+            # skipping weekends
+            self.rate_tracker.reset(event_t)
+        else:
+            self.accumulate_rewards(event_t)
+
         self.t = event_t
 
-        # recompute policies every 100 ticks
-        if self.t - self.last_policy_update >= 100:
+        # recompute policies every 500 ticks
+        if self.t - self.last_policy_update >= 500:
             self.update_policies()
 
         if event_type == "a":

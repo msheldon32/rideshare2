@@ -76,6 +76,7 @@ class Spawner:
 
     def get_spawn(self, start_t):
         return self.get_spawn_data(start_t)
+
     def get_spawn_event(self, spawn):
         t = spawn[0]
         cluster = spawn[2]
