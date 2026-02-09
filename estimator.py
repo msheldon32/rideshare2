@@ -12,6 +12,8 @@ class Estimator:
         self.alpha_spawn = 0.9
         self.alpha_service = 0.9
         self.alpha_transition = 0.9
+        self.alpha_reward = 0.8
+        self.alpha_subsidy = 0.8
 
         # inter-spawn time estimates (per location)
         self.inter_spawn_estimates = [1.0 for _ in range(self.n_locations)]
@@ -23,6 +25,15 @@ class Estimator:
 
         # customer transition probability estimates (uniform prior)
         self.transition_estimates = [[(1 / self.n_locations) for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+
+        # reward estimates: [origin][location]
+        self.reward_estimates = [[10.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+
+        # fare estimates: [origin][location]
+        self.fare_estimates = [[10.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+
+        # subsidy estimates: [origin][start][end]
+        self.subsidy_estimates = [[[0.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
     def observe_spawn(self, location, t):
         inter_spawn = t - self.last_spawn_time[location]
@@ -39,20 +50,30 @@ class Estimator:
             self.transition_estimates[start][j] = self.alpha_transition * self.transition_estimates[start][j]
         self.transition_estimates[start][end] += (1 - self.alpha_transition)
 
+    def observe_reward(self, origin, location, reward):
+        reward = min(reward, 50)
+        self.reward_estimates[origin][location] = (self.alpha_reward * self.reward_estimates[origin][location]) + ((1 - self.alpha_reward) * reward)
+
+    def observe_fare(self, origin, location, fare):
+        self.fare_estimates[origin][location] = (self.alpha_reward * self.fare_estimates[origin][location]) + ((1 - self.alpha_reward) * fare)
+
+    def observe_subsidy(self, origin, start, end, subsidy):
+        self.subsidy_estimates[origin][start][end] = (self.alpha_subsidy * self.subsidy_estimates[origin][start][end]) + ((1 - self.alpha_subsidy) * subsidy)
+
     def get_arrival_rates(self):
         return [1.0 / self.inter_spawn_estimates[i] for i in range(self.n_locations)]
 
     def get_service_rates(self):
         return [1.0 / self.inter_service_estimates[i] for i in range(self.n_locations)]
 
-    def get_config(self, vehicle_rewards, producer_rewards, exit_prob):
+    def get_config(self, exit_prob):
         return ModelConfig(
             grid=self.grid,
             period=self.period,
             arrival_rates=self.get_arrival_rates(),
             service_rates=self.get_service_rates(),
-            vehicle_rewards=vehicle_rewards,
-            producer_rewards=producer_rewards,
+            vehicle_rewards=self.reward_estimates,
+            producer_rewards=self.fare_estimates,
             exit_prob=exit_prob,
             customer_transitions=self.transition_estimates
         )

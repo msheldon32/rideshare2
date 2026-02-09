@@ -11,47 +11,34 @@ import observer
 import grid
 import empirical_tt
 import model
+import estimator
+import policy
 from util import *
 
 class Simulator:
-    def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, models=None):
+    def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs):
         self.requests = requests
         self.n_classes = n_classes
         self.n_clusters = n_clusters
         self.n_periods = n_periods
-        
+        self.exit_probs = exit_probs
+
         self.grid = grid.Grid()
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
-        last_t = [0 for i in range(N_CLUSTERS)]
-        q_acc = [0 for i in range(N_CLUSTERS)]
-        q_reports = [[] for i in range(N_CLUSTERS)]
 
-        q_history = model.QHistory(q_reports)
+        # one estimator per period
+        self.estimators = [estimator.Estimator(self.grid, period) for period in range(n_periods)]
 
-        if models is None:
-            self.w_estimates = [model.WEstimates(last_t, q_acc, q_history) for period in range(n_periods)]
-            self.exploration = [model.Exploration() for period in range(n_periods)]
-            self.models = [[model.DriverModel(self.grid, period, _class, self.w_estimates[period], self.exploration[period]) for _class in range(n_classes)] for period in range(n_periods)]
-        else:
-            self.models = models
-            self.w_estimates = [model.WEstimates(last_t, q_acc, q_history) for period in range(n_periods)]
-            for i, x in enumerate(self.w_estimates):
-                # keep the point estimates of W, scrap the history
-                self.w_estimates[i].w_estimates = self.models[i][0].w_estimates.w_estimates
-                self.w_estimates[i].alpha_w = self.models[i][0].w_estimates.alpha_w
-                self.w_estimates[i].request_estimates = self.models[i][0].w_estimates.request_estimates
-                self.w_estimates[i].request_alpha = self.models[i][0].w_estimates.request_alpha
-
-                for k in range(self.n_classes):
-                    self.models[i][k].w_estimates = x
-            #self.w_estimates = [x[0].w_estimates for x in self.models]
-            self.exploration = [x[0].exploration for x in self.models]
+        # initialize models with random uniform policies
+        uniform_policy = [[(1.0 / (n_clusters + 1)) for _ in range(n_clusters + 1)] for _ in range(n_clusters)]
+        self.models = [[model.DriverModel(uniform_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 
         self.transiters = [[[0 for k in range(n_classes)] for j in range(n_clusters)] for l in range(n_clusters)]
 
         self.t = 0
+        self.last_policy_update = 0
 
         self.spawner = spawner.Spawner(epoch)
         self.controller = controller.Controller()
@@ -68,6 +55,14 @@ class Simulator:
             #heapq.heappush(self.next_events, (next_request.time, "r", next_request))
             heapq.heappush(self.next_events, (req.time, "r", req))
 
+    def update_policies(self):
+        for period in range(self.n_periods):
+            config = self.estimators[period].get_config(self.exit_probs[period])
+            new_policies = policy.get_policies(config)
+            for _class in range(self.n_classes):
+                self.models[period][_class] = model.DriverModel(new_policies[_class], self.exit_probs[period])
+        self.last_policy_update = self.t
+
     def reset(self):
         self.observer.reset()
         self.spawner.reset()
@@ -79,6 +74,7 @@ class Simulator:
         #heapq.heappush(self.next_events, self.spawner.get_spawn(0))
 
         self.t = 0
+        self.last_policy_update = 0
         self.next_events.append((0, "r", self.requests[0]))
 
         for j in range(self.n_clusters):
@@ -88,7 +84,7 @@ class Simulator:
     def is_stopped(self):
         #return self.next_req >= 10000
         return self.next_req == len(self.requests)
-    
+
     def get_period(self):
         return get_period(self.t)
 
@@ -102,10 +98,8 @@ class Simulator:
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
             #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
             new_driver_ct += len(self.drivers[cluster][_class])
-        #self.w_estimates[period].report_q_len(cluster, new_driver_ct, self.t)
 
     def process_request(self, request):
-        self.w_estimates[self.get_period()].report_request(request.start_cluster, self.t)
         if self.next_req < len(self.requests):
             #next_request = self.requests[self.next_req]
             #heapq.heappush(self.next_events, (next_request.time, "r", next_request))
@@ -127,18 +121,17 @@ class Simulator:
         waiting_time = self.drivers[request.start_cluster][driver_class][driver_idx]
         del self.drivers[request.start_cluster][driver_class][driver_idx]
 
-        self.w_estimates[request.period].report_q_len(request.start_cluster, n_drivers-1, self.t)
-
         self.clean_queue(request.start_cluster, request.time)
 
-        #print("request q update")
-        #waiting_time = self.w_estimates[request.period].last_w[request.start_cluster]
         remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.net_fare_cents, n_drivers, request.time, waiting_time)
-        self.models[self.get_period()][driver_class].observe_r(request.start_cluster, remuneration)
-        self.models[self.get_period()][driver_class].observe_p(request.start_cluster, request.end_cluster)
-
 
         fare = request.net_fare_cents / 100
+
+        # estimator observations
+        self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, remuneration)
+        self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
+        self.estimators[self.get_period()].observe_service(request.start_cluster, self.t)
+        self.estimators[self.get_period()].observe_transition(request.start_cluster, request.end_cluster)
 
         self.observer.observe_reward(fare, fare-remuneration)
         self.observer.total_revenue += fare
@@ -153,26 +146,19 @@ class Simulator:
         self.observer.observe_request(request, remuneration, True)
 
     def decide(self, cluster, _class):
-        # check the action of the driver and increment self.drivers appropriately
-        #raise Exception("do")
         period = self.get_period()
         self.clean_queue(cluster, self.t)
-        action = self.models[period][_class].decide(cluster, self.t)
+        action = self.models[period][_class].decide(cluster)
 
         if action == -1:
             # vehicle leaves the system
             print(f"leaving the system.")
             return
         if action == cluster:
-            #driver_counts = [len(x) for x in self.drivers[cluster]]
-            #n_drivers = sum(driver_counts)
-            #if n_drivers < 50:
             self.drivers[cluster][_class].append(self.t)
             driver_counts = [len(x) for x in self.drivers[cluster]]
             n_drivers = sum(driver_counts)
             self.controller.report_event(cluster, self.t, n_drivers)
-            self.w_estimates[period].report_q_len(cluster, n_drivers, self.t)
-            self.w_estimates[period].report_arrival(cluster, self.t)
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")
@@ -188,7 +174,7 @@ class Simulator:
         # check if the vehicle auto-exits
         if self.models[self.get_period()][event._class].decide_exit():
             return
-        
+
         driver_class = event._class
         period = get_period(event.time)
         start = event.start_cluster
@@ -199,7 +185,7 @@ class Simulator:
         cost = self.grid.distance_costs[period][event.start_cluster][event.cluster]
 
         subsidy = self.controller.get_subsidy(period, driver_class, start, end)
-        self.models[self.get_period()][driver_class].observe_s(start, end, subsidy)
+        self.estimators[self.get_period()].observe_subsidy(driver_class, start, end, subsidy)
 
         self.observer.observe_reward(0, -subsidy)
         self.observer.total_subsidy += subsidy
@@ -219,10 +205,8 @@ class Simulator:
         self.decide(event.cluster, event._class)
 
     def process_spawn(self, event):
+        self.estimators[self.get_period()].observe_spawn(event.cluster, self.t)
         self.decide(event.cluster, event._class)
-
-        # ask the spawner to spawn another event
-        #heapq.heappush(self.next_events, self.spawner.get_spawn(self.t))
 
     def accumulate_rewards(self, event_t):
         # actually accumulating *costs* here, instantaneous rewards are handled elsewhere
@@ -258,6 +242,10 @@ class Simulator:
 
         self.t = event_t
 
+        # recompute policies every 100 ticks
+        if self.t - self.last_policy_update >= 100:
+            self.update_policies()
+
         if event_type == "a":
             self.process_arrival(event)
         elif event_type == "s":
@@ -269,13 +257,10 @@ class Simulator:
 
 
 if __name__ == "__main__":
-    print("The big issue to fix now is that the V values seem identical across all clusters")
-    print("I also think the cents vs dollars is a bit out of wack.")
-    input("Trimmed the number of bellman iterations dramatically to speed things up")
-    input("Need to finally fix waiting time inflation. Moving exploration to a constant")
-    #input("Re-assigning bumped jobs")
     reqs, epoch = trip_reqs.get_trip_requests()
-    simulator = Simulator(reqs, 16, 16, 8, epoch)
+    exit_probs = [0.4] * N_PERIODS
+
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
@@ -287,7 +272,7 @@ if __name__ == "__main__":
     print(f"total trips: {sim_observer.total_trips}")
     print(f"total requests: {sim_observer.total_requests}")
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, models=simulator.models)
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
