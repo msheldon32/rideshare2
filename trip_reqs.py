@@ -15,21 +15,23 @@ def get_trip_requests():
 
         for row in reader:
             t = datetime.fromisoformat(row["started_on"])
-            if row["status"] == "b'DISPATCHED'":
-                travel_time = (datetime.fromisoformat(row["completed_on"]) - t).total_seconds() / 3600
-            else:
-                travel_time = float("NaN")
             start = int(row["start_cluster"])
             end = int(row["end_cluster"])
 
             period = get_period(t.hour)
+
+            if row["status"] == "b'DISPATCHED'":
+                travel_time = (datetime.fromisoformat(row["completed_on"]) - t).total_seconds() / 3600
+            else:
+                travel_time = _grid.times[period][start][end]
 
             tip = float(row["tip"]) if len(row["tip"]) > 0 else 0
 
             if len(row["total_fare"]) == 0:
                 continue
 
-            travel_cost = _grid.get_travel_cost(start, end, period)
+            travel_distance = float(row["distance_travelled"]) / METERS_PER_MILE
+            travel_cost = travel_distance * COST_PER_MILE + travel_time * RESERVATION
             total_fare = float(row["total_fare"]) + tip - BOOKING_FEE - travel_cost
             
             if float(row["total_fare"]) + tip > 100:

@@ -82,7 +82,8 @@ class Simulator:
                 self.drivers[j][i] = [x-epoch for x in self.drivers[j][i]]
 
     def is_stopped(self):
-        return self.next_req == len(self.requests)
+        return self.next_req >= 10000
+        #return self.next_req == len(self.requests)
     
     def get_period(self):
         return get_period(self.t)
@@ -135,6 +136,8 @@ class Simulator:
         fare = request.net_fare_cents / 100
 
         self.observer.observe_reward(fare, fare-remuneration)
+        print(f"received request, fare: {fare}, profit: {fare-remuneration}")
+        raise Exception("stop")
 
         #end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
         end_time = request.time + self.empirical_tt.get_sample(self.get_period(), request.start_cluster, request.end_cluster)
@@ -229,6 +232,9 @@ class Simulator:
             for _class, y in enumerate(x):
                 waiting_cost += dt*len(y)*RESERVATION
         cost = transit_cost + waiting_cost
+        print(f"accumulating cost: {cost}")
+        print(f"waiting cost: {waiting_cost}")
+        print(f"transit cost: {transit_cost}")
         self.observer.observe_reward(-cost, 0)
 
     def step(self):
@@ -260,6 +266,7 @@ if __name__ == "__main__":
     simulator = Simulator(reqs, 16, 16, 8, epoch)
     while not simulator.is_stopped():
         simulator.step()
+    sim_observer = simulator.observer
     print(f"Net profit: {sim_observer.profit}")
     print(f"Total reward: {sim_observer.total_reward}")
 

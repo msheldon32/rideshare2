@@ -10,6 +10,7 @@ N_CLASSES = 16
 
 RESERVATION = 7.25
 COST_PER_MILE = 0.535
+METERS_PER_MILE = 1609.34
 
 def get_period(t):
     hod = math.floor(t) % 24
