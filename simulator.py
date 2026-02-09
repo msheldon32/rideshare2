@@ -11,7 +11,7 @@ import controller
 import observer
 import grid
 import empirical_tt
-import model
+import model_alt
 import estimator
 import policy
 from util import *
@@ -39,7 +39,15 @@ class Simulator:
 
         # default policy: always enter the queue at the current location
         default_policy = [([0.0] * i + [1.0] + [0.0] * (n_clusters - i)) for i in range(n_clusters)]
-        self.models = [[model.DriverModel(default_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
+        #self.models = [[model.DriverModel(default_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
+
+        self.exploration = [[model_alt.Exploration() for _class in range(n_classes)] for period in range(n_periods)]
+        self.models = [[model_alt.DriverModel(self.grid, 
+                                              period, 
+                                              _class, 
+                                              self.estimators[period], 
+                                              self.exit_probs[period], 
+                                              self.exploration[period][_class]) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
 
@@ -250,9 +258,9 @@ class Simulator:
 
         self.t = event_t
 
-        # recompute policies every 500 ticks
-        if self.t - self.last_policy_update >= 500:
-            self.update_policies()
+        # recompute policies every 100 ticks
+        #if self.t - self.last_policy_update >= 100:
+        #    self.update_policies()
 
         if event_type == "a":
             self.process_arrival(event)
