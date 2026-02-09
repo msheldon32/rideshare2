@@ -26,8 +26,10 @@ class Simulator:
         self.grid = grid.Grid()
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
 
+        self.rate_tracker = estimator.RateTracker()
+
         # one estimator per period
-        self.estimators = [estimator.Estimator(self.grid, period) for period in range(n_periods)]
+        self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period) for period in range(n_periods)]
 
         # default policy: always enter the queue at the current location
         default_policy = [([0.0] * i + [1.0] + [0.0] * (n_clusters - i)) for i in range(n_clusters)]
@@ -47,17 +49,21 @@ class Simulator:
         self.next_events = [(0, "r", self.requests[0])]
         self.next_req = 1
 
-        #heapq.heappush(self.next_events, self.spawner.get_spawn(0))
         for spawn in self.spawner.spawn_events:
             heapq.heappush(self.next_events, self.spawner.get_spawn_event(spawn))
 
         for req in self.requests:
-            #heapq.heappush(self.next_events, (next_request.time, "r", next_request))
             heapq.heappush(self.next_events, (req.time, "r", req))
 
     def update_policies(self):
         for period in range(self.n_periods):
             config = self.estimators[period].get_config(self.exit_probs[period])
+            print("-----------------------------------------------")
+            print(f"({period}) updating policy")
+            print(f"arrival_rates: {config.arrival_rates}")
+            print(f"service_rates: {config.service_rates}")
+
+            input("continue...")
             new_policies = policy.get_policies(config)
             for _class in range(self.n_classes):
                 self.models[period][_class] = model.DriverModel(new_policies[_class], self.exit_probs[period])
@@ -117,7 +123,6 @@ class Simulator:
 
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
         self.controller.report_event(request.start_cluster, request.time, n_drivers)
-
 
         # expel a random driver from the queue
         driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))
@@ -260,6 +265,7 @@ class Simulator:
 
 if __name__ == "__main__":
     reqs, epoch = trip_reqs.get_trip_requests()
+    input("fix the exit_probs but later")
     exit_probs = [0.4] * N_PERIODS
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)

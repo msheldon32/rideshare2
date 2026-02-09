@@ -11,7 +11,9 @@ class DriverModel:
         self.n_locations = len(policy)
 
     def decide(self, cluster):
+        print(f"({cluster}) deciding...")
         probs = self.policy[cluster]
+        print(f"probs: {[float(x) for x in probs]}")
         action = random.choices(range(len(probs)), probs, k=1)[0]
         if action == self.n_locations:
             return -1
