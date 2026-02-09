@@ -8,7 +8,7 @@ class QHistory:
         self.q_reports = q_reports
         self.arrivals = [[] for i in range(N_CLUSTERS)]
         self.requests = [[] for i in range(N_CLUSTERS)]
-        self.time_window = 2
+        self.time_window = 1
 
     def get_q_len(self, cluster):
         if len(self.q_reports[cluster]) == 0:
@@ -128,11 +128,14 @@ class QHistory:
     def report_request(self, cluster, t):
         self.requests[cluster].append(t)
 
+    def last_arrival(self, cluster):
+        return self.arrivals[cluster][-1]
+
 class WEstimates:
     def __init__(self, last_t, q_acc, q_history):
         self.w_estimates = [0 for i in range(N_CLUSTERS)]
         self.alpha_w = 0#.95
-        self.max_alpha = 0.95
+        self.max_alpha = 0.9
         self.alpha_inc = 0.0001
         self.q_acc = q_acc
         self.last_t = last_t
@@ -141,6 +144,9 @@ class WEstimates:
         self.time_window = 2  # lookback time for w
 
         self.q_history = q_history
+
+        self.arrival_alpha = 0.9
+        self.arrival_estimates = [1 for i in range(N_CLUSTERS)]
 
 
     def observe_w(self, cluster, w):
@@ -156,7 +162,9 @@ class WEstimates:
         return self.q_history.get_q_len(cluster)
 
     def get_expected_w(self, cluster, t):
-        exp_w = self.q_history.get_expected_w(cluster, t)
+        #exp_w = self.q_history.get_expected_w(cluster, t)
+        exp_q = self.get_q_len(cluster)
+        exp_w = (1 + exp_q)*self.arrival_estimates[cluster]
         self.observe_w(cluster, exp_w)
 
         return self.w_estimates[cluster]
@@ -165,7 +173,11 @@ class WEstimates:
         self.q_history.report_q_len(cluster, q_len, t)
 
     def report_arrival(self, cluster, t):
+        last_arrival = self.q_history.last_arrival(cluster)
         self.q_history.report_arrival(cluster, t)
+
+        arrival_time = last_arrival - t
+        self.arrival_estimates[cluster] = (self.arrival_alpha*self.arrival_estimates[cluster]) + ((1-self.arrival_alpha)*arrival_time)
 
     def report_request(self, cluster, t):
         self.q_history.report_request(cluster, t)

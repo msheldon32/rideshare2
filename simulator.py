@@ -231,13 +231,16 @@ class Simulator:
                     transit_cost += dt*n*RESERVATION
 
         waiting_cost = 0
+        total_waiting = 0
         for cluster, x in enumerate(self.drivers):
             for _class, y in enumerate(x):
                 waiting_cost += dt*len(y)*RESERVATION
+                total_waiting += len(y)
         cost = transit_cost + waiting_cost
         print(f"accumulating cost: {cost}")
         print(f"waiting cost: {waiting_cost}")
         print(f"transit cost: {transit_cost}")
+        print(f"dt: {dt}, total waiting: {total_waiting}")
         self.observer.observe_reward(-cost, 0)
 
         self.observer.total_waiting_cost += waiting_cost
