@@ -26,7 +26,7 @@ class Simulator:
         self.grid = grid.Grid()
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
 
-        self.rate_tracker = estimator.RateTracker()
+        self.rate_tracker = estimator.RateTracker(n_clusters)
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period) for period in range(n_periods)]
@@ -46,7 +46,7 @@ class Simulator:
         self.controller = controller.Controller()
         self.observer = observer.Observer()
 
-        self.next_events = [(0, "r", self.requests[0])]
+        self.next_events = []#(0, "r", self.requests[0])]
         self.next_req = 1
 
         for spawn in self.spawner.spawn_events:
@@ -63,29 +63,11 @@ class Simulator:
             print(f"arrival_rates: {config.arrival_rates}")
             print(f"service_rates: {config.service_rates}")
 
-            input("continue...")
             new_policies = policy.get_policies(config)
             for _class in range(self.n_classes):
                 self.models[period][_class] = model.DriverModel(new_policies[_class], self.exit_probs[period])
         self.last_policy_update = self.t
-
-    def reset(self):
-        self.observer.reset()
-        self.spawner.reset()
-        self.next_req = 1
-        epoch = self.t
-
-        # it should be noted that this preserves the heap
-        self.next_events = [(a-epoch, b, c) for a,b,c in self.next_events]
-        #heapq.heappush(self.next_events, self.spawner.get_spawn(0))
-
-        self.t = 0
-        self.last_policy_update = 0
-        self.next_events.append((0, "r", self.requests[0]))
-
-        for j in range(self.n_clusters):
-            for i in range(self.n_classes):
-                self.drivers[j][i] = [x-epoch for x in self.drivers[j][i]]
+        input("continue...")
 
     def is_stopped(self):
         #return self.next_req >= 10000
@@ -107,6 +89,7 @@ class Simulator:
 
     def process_request(self, request):
         self.estimators[self.get_period()].observe_service(request.start_cluster, self.t)
+        self.estimators[self.get_period()].observe_transition(request.start_cluster, request.end_cluster)
 
         if self.next_req < len(self.requests):
             #next_request = self.requests[self.next_req]
@@ -138,7 +121,6 @@ class Simulator:
         # estimator observations
         self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, remuneration)
         self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
-        self.estimators[self.get_period()].observe_transition(request.start_cluster, request.end_cluster)
 
         self.observer.observe_reward(fare, fare-remuneration)
         self.observer.total_revenue += fare

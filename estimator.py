@@ -2,9 +2,9 @@ from util import N_CLUSTERS
 from model_config import ModelConfig
 
 class RateTracker:
-    def __init__(self):
-        self.last_spawn_time = [0.0 for _ in range(self.n_locations)]
-        self.last_service_time = [0.0 for _ in range(self.n_locations)]
+    def __init__(self, n_locations):
+        self.last_spawn_time = [0.0 for _ in range(n_locations)]
+        self.last_service_time = [0.0 for _ in range(n_locations)]
 
 class Estimator:
     def __init__(self, rate_tracker, grid, period):
