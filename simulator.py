@@ -76,6 +76,9 @@ class Simulator:
     def get_period(self):
         return get_period(self.t)
 
+    def get_queue_lengths(self):
+        return [sum(len(self.drivers[cluster][_class]) for _class in range(self.n_classes)) for cluster in range(self.n_clusters)]
+
     def clean_queue(self, cluster, time):
         old_driver_ct = 0
         period = get_period(time)
@@ -148,6 +151,7 @@ class Simulator:
             driver_counts = [len(x) for x in self.drivers[cluster]]
             n_drivers = sum(driver_counts)
             self.controller.report_event(cluster, self.t, n_drivers)
+            self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")

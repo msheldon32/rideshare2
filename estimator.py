@@ -44,6 +44,9 @@ class Estimator:
         # subsidy estimates: [origin][start][end]
         self.subsidy_estimates = [[[0.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
+    def observe_queue_lengths(self, queue_lengths):
+        self.queue_lengths = queue_lengths
+
     def observe_spawn(self, location, t):
         inter_spawn = t - self.rate_tracker.last_spawn_time[location]
 
