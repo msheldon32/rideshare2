@@ -129,11 +129,13 @@ class QHistory:
         self.requests[cluster].append(t)
 
     def last_arrival(self, cluster):
+        if len(self.arrivals[cluster]) == 0:
+            return 0
         return self.arrivals[cluster][-1]
 
 class WEstimates:
     def __init__(self, last_t, q_acc, q_history):
-        self.w_estimates = [0 for i in range(N_CLUSTERS)]
+        self.w_estimates = [1 for i in range(N_CLUSTERS)]
         self.alpha_w = 0#.95
         self.max_alpha = 0.9
         self.alpha_inc = 0.0001
@@ -145,8 +147,8 @@ class WEstimates:
 
         self.q_history = q_history
 
-        self.arrival_alpha = 0.9
-        self.arrival_estimates = [1 for i in range(N_CLUSTERS)]
+        self.request_alpha = 0.95
+        self.request_estimates = [1 for i in range(N_CLUSTERS)]
 
 
     def observe_w(self, cluster, w):
@@ -164,8 +166,12 @@ class WEstimates:
     def get_expected_w(self, cluster, t):
         #exp_w = self.q_history.get_expected_w(cluster, t)
         exp_q = self.get_q_len(cluster)
-        exp_w = (1 + exp_q)*self.arrival_estimates[cluster]
+        exp_w = (1 + exp_q)*self.request_estimates[cluster]
         self.observe_w(cluster, exp_w)
+
+        print(f"exp_w: {exp_w}")
+        print(f"exp_q: {exp_q}")
+        print(f"request estimate: {self.request_estimates[cluster]}")
 
         return self.w_estimates[cluster]
 
@@ -173,14 +179,14 @@ class WEstimates:
         self.q_history.report_q_len(cluster, q_len, t)
 
     def report_arrival(self, cluster, t):
-        last_arrival = self.q_history.last_arrival(cluster)
         self.q_history.report_arrival(cluster, t)
 
-        arrival_time = last_arrival - t
-        self.arrival_estimates[cluster] = (self.arrival_alpha*self.arrival_estimates[cluster]) + ((1-self.arrival_alpha)*arrival_time)
-
     def report_request(self, cluster, t):
+        last_request = self.q_history.last_request(cluster)
         self.q_history.report_request(cluster, t)
+
+        request_time = t - last_request
+        self.request_estimates[cluster] = (self.request_alpha*self.request_estimates[cluster]) + ((1-self.request_alpha)*request_time)
 
 class Exploration:
     def __init__(self):
