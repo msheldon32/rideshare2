@@ -61,7 +61,8 @@ class Estimator:
         for cluster in range(N_CLUSTERS):
             if t - self.rate_tracker.last_arrival_time_in_period[self.period][cluster] > 5*24:
                 for _class in range(N_CLUSTERS):
-                    self.reward_estimates[_class][cluster] = 10.0
+                    # to prevent freezeout, simply increment the reward for a bit.
+                    self.reward_estimates[_class][cluster] += 1
 
     def update_w_estimates(self, t):
         for loc in range(self.n_locations):
