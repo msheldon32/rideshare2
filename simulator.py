@@ -34,9 +34,9 @@ class Simulator:
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
         self.controller = controller.Controller()
-        self.controller = controller.MethodController(0.5, self.grid)
+        #self.controller = controller.MethodController(0.5, self.grid)
         #self.controller = controller.BufferController(self.grid)
-        input("using method controller")
+        #input("using method controller")
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
@@ -103,7 +103,7 @@ class Simulator:
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
             #expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
+            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
             #new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
@@ -167,6 +167,7 @@ class Simulator:
             if cluster != _class:
                 cost = self.grid.get_travel_cost(cluster, _class, period)
                 self.observer.observe_reward(-cost, 0)
+                self.observer.total_exit_cost += cost
             return
         if action == cluster:
             self.drivers[cluster][_class].append(self.t)
@@ -187,15 +188,17 @@ class Simulator:
             heapq.heappush(self.next_events, (end_time, "t", arrival))
 
     def process_arrival(self, event):
+        period = get_period(event.time + self.epoch_hour)
+
         # check if the vehicle auto-exits
         if self.models[self.get_period()][event._class].decide_exit():
-            if event.cluster != _class:
-                cost = self.grid.get_travel_cost(event.cluster, _class, period)
+            if event.cluster != event._class:
+                cost = self.grid.get_travel_cost(event.cluster, event._class, period)
                 self.observer.observe_reward(-cost, 0)
+                self.observer.total_exit_cost += cost
             return
 
         driver_class = event._class
-        period = get_period(event.time + self.epoch_hour)
         start = event.start_cluster
         end = event.cluster
 
@@ -307,6 +310,7 @@ if __name__ == "__main__":
     print(f"Total travel cost: {sim_observer.total_travel_cost}")
     print(f"total trips: {sim_observer.total_trips}")
     print(f"total requests: {sim_observer.total_requests}")
+    print(f"total exit cost: {sim_observer.total_exit_cost}")
     sim_observer.save_trip_counts("trip_counts.csv")
 
     """simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
