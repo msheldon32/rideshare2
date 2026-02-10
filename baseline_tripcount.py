@@ -8,6 +8,10 @@ if __name__ == "__main__":
 
     reqs["started_on"] = reqs["started_on"].apply(pd.Timestamp)
 
+    epoch = reqs["started_on"].min()
+
+    print(f"epoch: {epoch.hour}")
+
     trip_cts = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
     req_cts = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
 

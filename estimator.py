@@ -25,6 +25,7 @@ class Estimator:
         self.alpha_transition = 0.9
         self.alpha_reward = 0.8
         self.alpha_subsidy = 0.8
+        self.alpha_w = 0.95
 
         # inter-spawn time estimates (per location)
         self.inter_spawn_estimates = [1.0 for _ in range(self.n_locations)]
@@ -44,8 +45,18 @@ class Estimator:
         # subsidy estimates: [origin][start][end]
         self.subsidy_estimates = [[[0.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
+        self.waiting_time_estimates = [1.0 for _ in range(self.n_locations)]
+
+    def update_w_estimates(self):
+        for loc in range(self.n_locations):
+            old_w = self.waiting_time_estimates[loc]
+            new_w = (1 + queue_lengths[loc])*self.inter_service_estimates[loc]
+
+            self.waiting_time_estimates[loc] = self.alpha_w*old_w + (1-self.alpha_w)*new_w
+
     def observe_queue_lengths(self, queue_lengths):
         self.queue_lengths = queue_lengths
+
 
     def observe_spawn(self, location, t):
         inter_spawn = t - self.rate_tracker.last_spawn_time[location]

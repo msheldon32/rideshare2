@@ -25,11 +25,14 @@ class DriverModel:
         self.bellman_iterations = 15
 
     def get_w_estimate(self, cluster):
-        q = getattr(self.estimator, 'queue_lengths', [0]*N_CLUSTERS)[cluster]
-        return (1 + q) * self.estimator.inter_service_estimates[cluster]
+        #q = getattr(self.estimator, 'queue_lengths', [0]*N_CLUSTERS)[cluster]
+        #return (1 + q) * self.estimator.inter_service_estimates[cluster]
+        return self.estimator.waiting_time_estimates[cluster]
 
     def incremental_rewards(self):
         r = [[0 for i in range(self.n_actions)] for j in range(N_CLUSTERS)]
+
+        self.estimator.update_w_estimates()
 
         for cluster in range(N_CLUSTERS):
             # cost of leaving
