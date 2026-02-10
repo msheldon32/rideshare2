@@ -5,8 +5,8 @@ import random
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 0.3#1.0#10.0
-        self.min_boltzmann = 0.3
+        self.boltzmann_tau = 0.2
+        self.min_boltzmann = 0.2
         self.boltzmann_decay = 0.99995
 
     def decay(self):
@@ -94,7 +94,7 @@ class DriverModel:
         print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
         print(f"({cluster}) r_estimates: {[self.estimator.reward_estimates[self.destination][c] for c in range(N_CLUSTERS)]}")
         print(f"({cluster}) w_estimates: {[self.get_w_estimate(x) for x in range(N_CLUSTERS)]}")
-        print(f"({cluster}) Q lengths: {getattr(self.estimator, 'queue_lengths', [0]*N_CLUSTERS)}")
+        print(f"({cluster}) Q lengths: {self.estimator.rate_tracker.queue_lengths}")
         print(f"({self.period}, {cluster}) service rate estimates: {[1/x for x in self.estimator.inter_service_estimates]}")
 
         tau = self.exploration.boltzmann_tau
