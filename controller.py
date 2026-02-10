@@ -20,6 +20,9 @@ class Controller:
     def reset(self, t):
         pass
 
+    def get_tax(self, cluster):
+        return 0
+
 class MethodController:
     def __init__(self, alpha, grid):
         self.alpha = alpha
@@ -36,13 +39,13 @@ class MethodController:
         total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
-        print(f"waiting_time: {waiting_time}")
+        """print(f"waiting_time: {waiting_time}")
         print(f"cost home: {self.grid.get_travel_cost(_class, end_cluster, period)}")
         print(f"old cost home: {self.grid.get_travel_cost(_class, start_cluster, period)}")
 
         print(f"total_opt: {total_opt}")
         print(f"profit_max: {profit_max}")
-        input("continue?")
+        input("continue?")"""
 
         return (1-self.alpha)*total_opt + self.alpha*profit_max
 
@@ -71,3 +74,6 @@ class MethodController:
 
     def reset(self, t):
         self.last_t = [t for i in range(N_CLUSTERS)]
+
+    def get_tax(self, cluster):
+        return self.last_tax[cluster]

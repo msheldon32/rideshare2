@@ -58,7 +58,7 @@ class Simulator:
 
         self.spawner = spawner.Spawner(epoch)
         #self.controller = controller.Controller()
-        self.controller = controller.MethodController(0.5, self.grid)
+        self.controller = controller.MethodController(0, self.grid)
         input("using method controller")
         self.observer = observer.Observer()
 
@@ -283,6 +283,7 @@ def get_exit_probs():
 
 if __name__ == "__main__":
     input("The controller isn't quite accurate to the paper as is, it decides taxes upon arrival while it should decide upon the next event *after* arrival")
+    input("this might have been fixed. the big issue now is that the rewards do not account for the profit-maximizing price")
     reqs, epoch = trip_reqs.get_trip_requests()
     exit_probs = get_exit_probs()
 

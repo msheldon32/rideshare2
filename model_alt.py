@@ -47,7 +47,8 @@ class DriverModel:
                 r[cluster][other_cluster] = expected_s - self.grid.get_rebalance_cost(cluster, other_cluster, self.period)
 
             # cost of entering the queue
-            expected_r = self.estimator.reward_estimates[self.destination][cluster]
+            #expected_r = self.estimator.reward_estimates[self.destination][cluster]
+            expected_r = self.estimator.fare_estimates[self.destination][cluster] - self.estimator.controller.get_tax(cluster)
             expected_w = self.get_w_estimate(cluster)
             r[cluster][cluster] = expected_r - expected_w*RESERVATION  # this uses the fiction that travel costs are already handled.
         return r
