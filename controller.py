@@ -80,6 +80,7 @@ class MethodController:
 
 class BufferController:
     def __init__(self, grid):
+        input("this is just a test, I am not sure if I need to consider the individual class when clearing the tax buffer, and if this always preserves the mean")
         self.grid = grid
 
         self.last_t = [0 for i in range(N_CLUSTERS)]

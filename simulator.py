@@ -34,9 +34,9 @@ class Simulator:
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
         self.controller = controller.Controller()
-        #self.controller = controller.MethodController(0.5, self.grid)
+        self.controller = controller.MethodController(0.5, self.grid)
         #self.controller = controller.BufferController(self.grid)
-        #input("using buffer controller")
+        input("using method controller")
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
@@ -189,6 +189,9 @@ class Simulator:
     def process_arrival(self, event):
         # check if the vehicle auto-exits
         if self.models[self.get_period()][event._class].decide_exit():
+            if event.cluster != _class:
+                cost = self.grid.get_travel_cost(event.cluster, _class, period)
+                self.observer.observe_reward(-cost, 0)
             return
 
         driver_class = event._class
