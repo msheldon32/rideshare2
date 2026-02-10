@@ -102,8 +102,8 @@ class Simulator:
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
-            new_driver_ct += len(self.drivers[cluster][_class])
+            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
+            #new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
         self.clean_queue(request.start_cluster, self.t)
@@ -274,25 +274,10 @@ class Simulator:
 def get_exit_probs():
     exit_probs = [1.0] * N_PERIODS
 
-    for period in range(N_PERIODS):
-        arrivals = [0 for i in range(N_CLUSTERS)]
-
-        # get the exit prob for the current time period
-        with open("data/arrival_rates.csv") as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                if int(row["period"]) == period:
-                    cluster = int(row["start"])
-                    arrivals[cluster] = float(row["arrivals"])
-
-        with open("data/exit_rates.csv") as csvfile:
-            reader = csv.DictReader(csvfile)
-
-            for row in reader:
-                if int(row["period"]) == period:
-                    cluster = int(row["start"])
-                    exit_rate = float(row["exits"])
-                    exit_probs[period] = min(exit_probs[period], exit_rate/arrivals[cluster])
+    with open("data/exit_probs.csv") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            exit_probs[int(row["period"])] = float(row["exit_prob"])
     return exit_probs
 
 
