@@ -1,4 +1,4 @@
-from util import N_CLUSTERS
+from util import N_CLUSTERS, N_PERIODS
 from model_config import ModelConfig
 
 import collections
@@ -8,6 +8,7 @@ class RateTracker:
         self.n_locations = n_locations
         self.last_spawn_time = [0.0 for _ in range(n_locations)]
         self.last_arrival_time = [0.0 for _ in range(n_locations)]
+        self.last_service_time = [0.0 for _ in range(n_locations)]
         self.services = [collections.deque() for _ in range(self.n_locations)]
         self.queue_lengths = [0 for _ in range(n_locations)]
         self.last_arrival_time_in_period = [[0.0 for _ in range(n_locations)] for period in range(N_PERIODS)]
@@ -77,6 +78,9 @@ class Estimator:
             #new_w = (1+ self.rate_tracker.queue_lengths[loc])*self.inter_service_estimates[loc]
 
             self.waiting_time_estimates[loc] = self.alpha_w*old_w + (1-self.alpha_w)*new_w
+
+    def observe_queue_lengths(self, queue_lengths):
+        self.rate_tracker.queue_lengths = queue_lengths
 
     def observe_spawn(self, location, t):
         inter_spawn = t - self.rate_tracker.last_spawn_time[location]

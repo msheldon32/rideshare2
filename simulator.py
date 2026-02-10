@@ -157,7 +157,7 @@ class Simulator:
     def decide(self, cluster, _class):
         period = self.get_period()
         self.clean_queue(cluster, self.t)
-        self.estimators[self.get_period()].clean_rewards()
+        self.estimators[self.get_period()].clean_rewards(self.t)
         action = self.models[period][_class].decide(cluster, self.t)
 
         if action == -1:
@@ -170,7 +170,7 @@ class Simulator:
             n_drivers = sum(driver_counts)
             self.controller.report_event(cluster, self.t, n_drivers, "arrival")
             self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
-            self.estimators[self.get_period()].observe_arrival(event.cluster, self.t)
+            self.estimators[self.get_period()].observe_arrival(cluster, self.t)
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")
