@@ -89,11 +89,12 @@ class DriverModel:
 
     def decide(self, cluster, t):
         q_values, v_values = self.get_q_values(t)
+        r_estimates = [self.estimator.fare_estimates[self.destination][cluster] - self.estimator.controller.get_tax(cluster) for cluster in range(N_CLUSTERS)]
         print(f"period: {self.period}")
         print(f"({cluster}) q_values: {q_values[cluster]}")
         print(f"({cluster}) v_values: {v_values}")
         print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
-        print(f"({cluster}) r_estimates: {[self.estimator.reward_estimates[self.destination][c] for c in range(N_CLUSTERS)]}")
+        print(f"({cluster}) r_estimates: {[r_estimates[c] for c in range(N_CLUSTERS)]}")
         print(f"({cluster}) w_estimates: {[self.get_w_estimate(x) for x in range(N_CLUSTERS)]}")
         print(f"({cluster}) Q lengths: {self.estimator.rate_tracker.queue_lengths}")
         print(f"({self.period}, {cluster}) service rate estimates: {[1/x for x in self.estimator.inter_service_estimates]}")

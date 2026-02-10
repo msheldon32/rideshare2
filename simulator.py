@@ -33,9 +33,12 @@ class Simulator:
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
+        #self.controller = controller.Controller()
+        self.controller = controller.MethodController(0, self.grid)
+        input("using method controller")
 
         # one estimator per period
-        self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period) for period in range(n_periods)]
+        self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
 
         # default policy: always enter the queue at the current location
         default_policy = [([0.0] * i + [1.0] + [0.0] * (n_clusters - i)) for i in range(n_clusters)]
@@ -57,9 +60,6 @@ class Simulator:
         self.last_policy_update = 0
 
         self.spawner = spawner.Spawner(epoch)
-        #self.controller = controller.Controller()
-        self.controller = controller.MethodController(0, self.grid)
-        input("using method controller")
         self.observer = observer.Observer()
 
         self.next_events = []#(0, "r", self.requests[0])]

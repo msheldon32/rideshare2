@@ -17,11 +17,12 @@ class RateTracker:
 
 
 class Estimator:
-    def __init__(self, rate_tracker, grid, period):
+    def __init__(self, rate_tracker, grid, period, controller):
         self.rate_tracker = rate_tracker
         self.grid = grid
         self.period = period
         self.n_locations = N_CLUSTERS
+        self.controller = controller
 
         # EWMA smoothing factors
         self.alpha_spawn = 0.9
