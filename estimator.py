@@ -2,6 +2,7 @@ from util import N_CLUSTERS, N_PERIODS
 from model_config import ModelConfig
 
 import collections
+import random
 
 class RateTracker:
     def __init__(self, n_locations):
@@ -11,11 +12,12 @@ class RateTracker:
         self.last_service_time = [0.0 for _ in range(n_locations)]
         self.services = [collections.deque() for _ in range(self.n_locations)]
         self.queue_lengths = [0 for _ in range(n_locations)]
-        self.last_arrival_time_in_period = [[0.0 for _ in range(n_locations)] for period in range(N_PERIODS)]
+        self.last_arrival_time_in_period = [[float("inf") for _ in range(n_locations)] for period in range(N_PERIODS)]
 
     def reset(self, t):
         self.last_spawn_time = [t for _ in range(self.n_locations)]
         self.last_service_time = [t for _ in range(self.n_locations)]
+        self.last_arrival_time_in_period = [[t for _ in range(n_locations)] for period in range(N_PERIODS)]
 
 
 class Estimator:
@@ -59,10 +61,14 @@ class Estimator:
 
     def clean_rewards(self, t):
         for cluster in range(N_CLUSTERS):
-            if t - self.rate_tracker.last_arrival_time_in_period[self.period][cluster] > 5*24:
+            if (t - self.rate_tracker.last_arrival_time_in_period[self.period][cluster]) > 2*24:
                 for _class in range(N_CLUSTERS):
                     # to prevent freezeout, simply increment the reward for a bit.
-                    self.reward_estimates[_class][cluster] += 1
+                    self.reward_estimates[_class][cluster] = min(10, self.reward_estimates[_class][cluster]+1)
+                if random.random() < 0.01 and False:
+                    print(f"{self.rate_tracker.last_arrival_time_in_period[self.period][cluster]}")
+                    print(f"t: {t}")
+                    input("continue")
 
     def update_w_estimates(self, t):
         for loc in range(self.n_locations):
