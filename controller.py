@@ -14,7 +14,7 @@ class Controller:
     def get_subsidy(self, period, _class, start, end):
         return 0
 
-    def report_event(self, cluster, time, driver_ct):
+    def report_event(self, cluster, time, driver_ct, event_type):
         pass
 
     def reset(self, t):

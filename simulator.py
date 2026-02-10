@@ -34,7 +34,7 @@ class Simulator:
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
         #self.controller = controller.Controller()
-        self.controller = controller.MethodController(0.5, self.grid)
+        self.controller = controller.MethodController(0, self.grid)
         input("using method controller")
 
         # one estimator per period
@@ -101,9 +101,9 @@ class Simulator:
         # remove any drivers that have been in the queue for more than 5 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
-            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
+            #expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
             self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
-            new_driver_ct += len(self.drivers[cluster][_class])
+            #new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
         self.clean_queue(request.start_cluster, self.t)
@@ -157,6 +157,7 @@ class Simulator:
     def decide(self, cluster, _class):
         period = self.get_period()
         self.clean_queue(cluster, self.t)
+        self.estimators[self.get_period()].clean_rewards()
         action = self.models[period][_class].decide(cluster, self.t)
 
         if action == -1:
@@ -169,6 +170,7 @@ class Simulator:
             n_drivers = sum(driver_counts)
             self.controller.report_event(cluster, self.t, n_drivers, "arrival")
             self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
+            self.estimators[self.get_period()].observe_arrival(event.cluster, self.t)
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")

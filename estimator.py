@@ -7,9 +7,10 @@ class RateTracker:
     def __init__(self, n_locations):
         self.n_locations = n_locations
         self.last_spawn_time = [0.0 for _ in range(n_locations)]
-        self.last_service_time = [0.0 for _ in range(n_locations)]
+        self.last_arrival_time = [0.0 for _ in range(n_locations)]
         self.services = [collections.deque() for _ in range(self.n_locations)]
         self.queue_lengths = [0 for _ in range(n_locations)]
+        self.last_arrival_time_in_period = [[0.0 for _ in range(n_locations)] for period in range(N_PERIODS)]
 
     def reset(self, t):
         self.last_spawn_time = [t for _ in range(self.n_locations)]
@@ -55,6 +56,12 @@ class Estimator:
 
         self.time_window = 2
 
+    def clean_rewards(self, t):
+        for cluster in range(N_CLUSTERS):
+            if t - self.rate_tracker.last_arrival_time_in_period[self.period][cluster] > 5*24:
+                for _class in range(N_CLUSTERS):
+                    self.reward_estimates[_class][cluster] = 10.0
+
     def update_w_estimates(self, t):
         for loc in range(self.n_locations):
             while len(self.rate_tracker.services[loc]) > 0 and self.rate_tracker.services[loc][0] < t-self.time_window:
@@ -71,15 +78,15 @@ class Estimator:
 
             self.waiting_time_estimates[loc] = self.alpha_w*old_w + (1-self.alpha_w)*new_w
 
-    def observe_queue_lengths(self, queue_lengths):
-        self.rate_tracker.queue_lengths = queue_lengths
-
-
     def observe_spawn(self, location, t):
         inter_spawn = t - self.rate_tracker.last_spawn_time[location]
 
         self.inter_spawn_estimates[location] = (self.alpha_spawn * self.inter_spawn_estimates[location]) + ((1 - self.alpha_spawn) * inter_spawn)
         self.rate_tracker.last_spawn_time[location] = t
+
+    def observe_arrival(self, location, t):
+        self.rate_tracker.last_arrival_time[location] = t
+        self.rate_tracker.last_arrival_time_in_period[self.period][location] = t
 
     def observe_service(self, location, t):
         inter_service = t - self.rate_tracker.last_service_time[location]
