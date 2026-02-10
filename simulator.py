@@ -164,6 +164,8 @@ class Simulator:
         if action == -1:
             # vehicle leaves the system
             print(f"leaving the system.")
+            cost = self.grid.get_travel_cost(cluster, _class, period)
+            self.observer.observe_reward(-cost, 0)
             return
         if action == cluster:
             self.drivers[cluster][_class].append(self.t)

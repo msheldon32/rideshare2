@@ -93,12 +93,13 @@ class BufferController:
         # here we are accumulating the buffer to use on later jobs if it exceeds the estimated cost.
         #   this guarantees profitability without losing the right EV
 
-        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION - self.tax_buffer[start_cluster]
+        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION - (self.tax_buffer[start_cluster]/2)
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
         price = max(total_opt, profit_max)
-
-        self.tax_buffer[start_cluster] = price - total_opt
+        
+        self.tax_buffer[start_cluster] /= 2
+        self.tax_buffer[start_cluster] += price - total_opt
 
         return price
 
