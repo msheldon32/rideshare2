@@ -58,7 +58,7 @@ class Simulator:
 
         self.spawner = spawner.Spawner(epoch)
         #self.controller = controller.Controller()
-        self.controller = controller.MethodController(0, self.grid)
+        self.controller = controller.MethodController(0.5, self.grid)
         input("using method controller")
         self.observer = observer.Observer()
 
@@ -102,8 +102,8 @@ class Simulator:
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
-            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
-            #new_driver_ct += len(self.drivers[cluster][_class])
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
+            new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
         self.clean_queue(request.start_cluster, self.t)
@@ -128,7 +128,7 @@ class Simulator:
 
         # expel a random driver from the queue
         driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))
-        waiting_time = self.drivers[request.start_cluster][driver_class][driver_idx]
+        waiting_time = self.t - self.drivers[request.start_cluster][driver_class][driver_idx]
         del self.drivers[request.start_cluster][driver_class][driver_idx]
         self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
 
@@ -282,6 +282,7 @@ def get_exit_probs():
 
 
 if __name__ == "__main__":
+    input("The controller isn't quite accurate to the paper as is, it decides taxes upon arrival while it should decide upon the next event *after* arrival")
     reqs, epoch = trip_reqs.get_trip_requests()
     exit_probs = get_exit_probs()
 
