@@ -34,7 +34,7 @@ class Simulator:
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
         #self.controller = controller.Controller()
-        self.controller = controller.MethodController(0, self.grid)
+        self.controller = controller.MethodController(0.5, self.grid)
         input("using method controller")
 
         # one estimator per period
