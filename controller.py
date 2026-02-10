@@ -38,17 +38,20 @@ class MethodController:
     def get_subsidy(self, period, _class, start, end):
         return self.alpha * self.grid.get_prepaid_cost(_class, start, end, period)
 
-    def report_event(self, cluster, time, driver_ct):
+    def report_event(self, cluster, time, driver_ct, event_type):
+        if event_type == "departure":
+            self.last_t[cluster] = time
+            return
         tax = ((time-self.last_t[cluster]) * (driver_ct**2))
         self.last_tax[cluster] = (1-self.beta)*tax + (self.beta*self.last_tax[cluster])
 
 
-        print(f"setting tax to: {tax}")
-        print(f"smoothed tax: {self.last_tax[cluster]}")
-        print(f"time between events: {time-self.last_t[cluster]}")
-        print(f"driver_ct: {driver_ct}")
+        #print(f"setting tax to: {tax}")
+        #print(f"smoothed tax: {self.last_tax[cluster]}")
+        #print(f"time between events: {time-self.last_t[cluster]}")
+        #print(f"driver_ct: {driver_ct}")
         self.last_t[cluster] = time
-        input("continue")
+        #input("continue")
 
     def reset(self, t):
         self.last_t = [t for i in range(N_CLUSTERS)]

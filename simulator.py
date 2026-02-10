@@ -119,7 +119,7 @@ class Simulator:
         driver_counts = [len(x) for x in self.drivers[request.start_cluster]]
         n_drivers = sum(driver_counts)
 
-        self.controller.report_event(request.start_cluster, request.time, n_drivers)
+        self.controller.report_event(request.start_cluster, request.time, n_drivers, "departure")
 
         if n_drivers == 0:
             self.observer.observe_request(request, None, False)
@@ -167,7 +167,7 @@ class Simulator:
             self.drivers[cluster][_class].append(self.t)
             driver_counts = [len(x) for x in self.drivers[cluster]]
             n_drivers = sum(driver_counts)
-            self.controller.report_event(cluster, self.t, n_drivers)
+            self.controller.report_event(cluster, self.t, n_drivers, "arrival")
             self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
             print(f"chose to enter queue: {cluster}")
         else:
