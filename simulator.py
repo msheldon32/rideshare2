@@ -57,9 +57,9 @@ class Simulator:
         self.last_policy_update = 0
 
         self.spawner = spawner.Spawner(epoch)
-        self.controller = controller.Controller()
-        #self.controller = controller.MethodController(0, self.grid)
-        #input("using method controller")
+        #self.controller = controller.Controller()
+        self.controller = controller.MethodController(0, self.grid)
+        input("using method controller")
         self.observer = observer.Observer()
 
         self.next_events = []#(0, "r", self.requests[0])]
@@ -119,12 +119,12 @@ class Simulator:
         driver_counts = [len(x) for x in self.drivers[request.start_cluster]]
         n_drivers = sum(driver_counts)
 
+        self.controller.report_event(request.start_cluster, request.time, n_drivers)
+
         if n_drivers == 0:
             self.observer.observe_request(request, None, False)
             return
-
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
-        self.controller.report_event(request.start_cluster, request.time, n_drivers)
 
         # expel a random driver from the queue
         driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))

@@ -42,7 +42,13 @@ class MethodController:
         tax = ((time-self.last_t[cluster]) * (driver_ct**2))
         self.last_tax[cluster] = (1-self.beta)*tax + (self.beta*self.last_tax[cluster])
 
+
+        print(f"setting tax to: {tax}")
+        print(f"smoothed tax: {self.last_tax[cluster]}")
+        print(f"time between events: {time-self.last_t[cluster]}")
+        print(f"driver_ct: {driver_ct}")
         self.last_t[cluster] = time
+        input("continue")
 
     def reset(self, t):
         self.last_t = [t for i in range(N_CLUSTERS)]
