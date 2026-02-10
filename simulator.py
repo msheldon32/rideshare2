@@ -33,10 +33,10 @@ class Simulator:
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
-        #self.controller = controller.Controller()
+        self.controller = controller.Controller()
         #self.controller = controller.MethodController(0.5, self.grid)
-        self.controller = controller.BufferController(self.grid)
-        input("using buffer controller")
+        #self.controller = controller.BufferController(self.grid)
+        #input("using buffer controller")
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
@@ -164,8 +164,9 @@ class Simulator:
         if action == -1:
             # vehicle leaves the system
             print(f"leaving the system.")
-            cost = self.grid.get_travel_cost(cluster, _class, period)
-            self.observer.observe_reward(-cost, 0)
+            if cluster != _class:
+                cost = self.grid.get_travel_cost(cluster, _class, period)
+                self.observer.observe_reward(-cost, 0)
             return
         if action == cluster:
             self.drivers[cluster][_class].append(self.t)
