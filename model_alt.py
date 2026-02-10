@@ -29,10 +29,10 @@ class DriverModel:
         #return (1 + q) * self.estimator.inter_service_estimates[cluster]
         return self.estimator.waiting_time_estimates[cluster]
 
-    def incremental_rewards(self):
+    def incremental_rewards(self, t):
         r = [[0 for i in range(self.n_actions)] for j in range(N_CLUSTERS)]
 
-        self.estimator.update_w_estimates()
+        self.estimator.update_w_estimates(t)
 
         for cluster in range(N_CLUSTERS):
             # cost of leaving
@@ -52,7 +52,7 @@ class DriverModel:
             r[cluster][cluster] = expected_r - expected_w*RESERVATION  # this uses the fiction that travel costs are already handled.
         return r
 
-    def get_q_values(self):
+    def get_q_values(self, t):
         # return a list [a_i | i in clusters]
 
         # use value iteration over each policy
@@ -62,7 +62,7 @@ class DriverModel:
         q_values = [[0 for i in range(self.n_actions)] for j in range(N_CLUSTERS)]
         v_values = [0 for j in range(N_CLUSTERS)]
 
-        incremental_rewards = self.incremental_rewards()
+        incremental_rewards = self.incremental_rewards(t)
         p_estimates = self.estimator.transition_estimates
 
         # I need to estimate or plug in the probability of transit...
@@ -86,15 +86,16 @@ class DriverModel:
 
         return q_values, v_values
 
-    def decide(self, cluster):
-        q_values, v_values = self.get_q_values()
+    def decide(self, cluster, t):
+        q_values, v_values = self.get_q_values(t)
         print(f"period: {self.period}")
         print(f"({cluster}) q_values: {q_values[cluster]}")
         print(f"({cluster}) v_values: {v_values}")
-        print(f"({cluster}) incremental rewards: {self.incremental_rewards()[cluster]}")
+        print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
         print(f"({cluster}) r_estimates: {[self.estimator.reward_estimates[self.destination][c] for c in range(N_CLUSTERS)]}")
         print(f"({cluster}) w_estimates: {[self.get_w_estimate(x) for x in range(N_CLUSTERS)]}")
         print(f"({cluster}) Q lengths: {getattr(self.estimator, 'queue_lengths', [0]*N_CLUSTERS)}")
+        print(f"({self.period}, {cluster}) service rate estimates: {[1/x for x in self.estimator.inter_service_estimates]}")
 
         tau = self.exploration.boltzmann_tau
         unnorm_probs = [q/tau for q in q_values[cluster]]

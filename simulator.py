@@ -157,7 +157,7 @@ class Simulator:
     def decide(self, cluster, _class):
         period = self.get_period()
         self.clean_queue(cluster, self.t)
-        action = self.models[period][_class].decide(cluster)
+        action = self.models[period][_class].decide(cluster, self.t)
 
         if action == -1:
             # vehicle leaves the system

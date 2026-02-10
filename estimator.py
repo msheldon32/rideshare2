@@ -1,11 +1,15 @@
 from util import N_CLUSTERS
 from model_config import ModelConfig
 
+import collections
+
 class RateTracker:
     def __init__(self, n_locations):
         self.n_locations = n_locations
         self.last_spawn_time = [0.0 for _ in range(n_locations)]
         self.last_service_time = [0.0 for _ in range(n_locations)]
+        self.services = [collections.deque() for _ in range(self.n_locations)]
+        self.queue_lengths = [0 for _ in range(n_locations)]
 
     def reset(self, t):
         self.last_spawn_time = [t for _ in range(self.n_locations)]
@@ -47,15 +51,26 @@ class Estimator:
 
         self.waiting_time_estimates = [1.0 for _ in range(self.n_locations)]
 
-    def update_w_estimates(self):
+
+        self.time_window = 2
+
+    def update_w_estimates(self, t):
         for loc in range(self.n_locations):
+            while len(self.rate_tracker.services[loc]) > 0 and self.rate_tracker.services[loc][0] < t-self.time_window:
+                self.rate_tracker.services[loc].popleft()
+            
+            if len(self.rate_tracker.services[loc]) == 0:
+                mu = 1/self.inter_service_estimates[loc]
+            else:
+                mu = self.time_window/len(self.rate_tracker.services[loc])
+
             old_w = self.waiting_time_estimates[loc]
-            new_w = (1 + queue_lengths[loc])*self.inter_service_estimates[loc]
+            new_w = (1 + self.rate_tracker.queue_lengths[loc])/mu
 
             self.waiting_time_estimates[loc] = self.alpha_w*old_w + (1-self.alpha_w)*new_w
 
     def observe_queue_lengths(self, queue_lengths):
-        self.queue_lengths = queue_lengths
+        self.rate_tracker.queue_lengths = queue_lengths
 
 
     def observe_spawn(self, location, t):
@@ -68,6 +83,9 @@ class Estimator:
         inter_service = t - self.rate_tracker.last_service_time[location]
         self.inter_service_estimates[location] = (self.alpha_service * self.inter_service_estimates[location]) + ((1 - self.alpha_service) * inter_service)
         self.rate_tracker.last_service_time[location] = t
+        
+        self.rate_tracker.services[location].append(t)
+
 
     def observe_transition(self, start, end):
         for j in range(self.n_locations):
