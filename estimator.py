@@ -17,7 +17,6 @@ class RateTracker:
     def reset(self, t):
         self.last_spawn_time = [t for _ in range(self.n_locations)]
         self.last_service_time = [t for _ in range(self.n_locations)]
-        self.last_arrival_time_in_period = [[t for _ in range(n_locations)] for period in range(N_PERIODS)]
 
 
 class Estimator:
@@ -61,14 +60,10 @@ class Estimator:
 
     def clean_rewards(self, t):
         for cluster in range(N_CLUSTERS):
-            if (t - self.rate_tracker.last_arrival_time_in_period[self.period][cluster]) > 2*24:
+            if (t - self.rate_tracker.last_arrival_time_in_period[self.period][cluster]) > 7*24:
                 for _class in range(N_CLUSTERS):
                     # to prevent freezeout, simply increment the reward for a bit.
                     self.reward_estimates[_class][cluster] = min(10, self.reward_estimates[_class][cluster]+1)
-                if random.random() < 0.01 and False:
-                    print(f"{self.rate_tracker.last_arrival_time_in_period[self.period][cluster]}")
-                    print(f"t: {t}")
-                    input("continue")
 
     def update_w_estimates(self, t):
         for loc in range(self.n_locations):
