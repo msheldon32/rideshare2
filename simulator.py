@@ -34,9 +34,9 @@ class Simulator:
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
         self.controller = controller.Controller()
-        self.controller = controller.MethodController(0.25, self.grid)
+        #self.controller = controller.MethodController(0.25, self.grid)
         #self.controller = controller.BufferController(self.grid)
-        input("using method controller")
+        #input("using method controller")
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
@@ -328,7 +328,7 @@ def get_exit_probs():
         
 
         exit_probs[period] = num/denom
-
+    
     return exit_probs
 
 

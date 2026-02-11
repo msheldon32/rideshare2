@@ -78,8 +78,8 @@ class Estimator:
                 mu = len(self.rate_tracker.services[loc])/self.time_window
 
             old_w = self.waiting_time_estimates[loc]
-            new_w = (1 + self.rate_tracker.queue_lengths[loc])/mu
-            #new_w = (1+ self.rate_tracker.queue_lengths[loc])*self.inter_service_estimates[loc]
+            #new_w = (1 + self.rate_tracker.queue_lengths[loc])/mu
+            new_w = (1+ self.rate_tracker.queue_lengths[loc])*self.inter_service_estimates[loc]
 
             self.waiting_time_estimates[loc] = self.alpha_w*old_w + (1-self.alpha_w)*new_w
 
