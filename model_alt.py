@@ -5,8 +5,8 @@ import random
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 0.2
-        self.min_boltzmann = 0.2
+        self.boltzmann_tau = 0.5
+        self.min_boltzmann = 0.5
         self.boltzmann_decay = 0.99995
 
     def decay(self):

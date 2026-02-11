@@ -34,9 +34,9 @@ class Simulator:
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
         self.controller = controller.Controller()
-        #self.controller = controller.MethodController(0.5, self.grid)
+        self.controller = controller.MethodController(0.25, self.grid)
         #self.controller = controller.BufferController(self.grid)
-        #input("using method controller")
+        input("using method controller")
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
@@ -286,10 +286,49 @@ class Simulator:
 def get_exit_probs():
     exit_probs = [1.0] * N_PERIODS
 
-    with open("data/exit_probs.csv") as csvfile:
+    #with open("data/exit_probs.csv") as csvfile:
+    #    reader = csv.DictReader(csvfile)
+    #    for row in reader:
+    #        exit_probs[int(row["period"])] = float(row["exit_prob"])
+    #return [x/2 for x in exit_probs]
+
+    arrival_rates = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
+    exit_rates = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
+
+    with open("data/arrival_rates.csv") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            exit_probs[int(row["period"])] = float(row["exit_prob"])
+            period = int(row["period"])
+            cluster = int(row["start"])
+            arrival_rates[period][cluster] = float(row["arrivals"])
+
+    with open("data/exit_rates.csv") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            period = int(row["period"])
+            cluster = int(row["start"])
+            exit_rates[period][cluster] = float(row["exits"])
+
+    for period in range(N_PERIODS):
+        probs = [0 for i in range(N_CLUSTERS)]
+
+        for cluster in range(N_CLUSTERS):
+            probs[cluster] = (exit_rates[period][cluster] / arrival_rates[period][cluster], cluster)
+
+        probs.sort()
+
+        num = 0
+        denom = 0
+
+        for idx in range(N_CLUSTERS//2):
+            cluster = probs[idx][1]
+
+            num += exit_rates[period][cluster]
+            denom += arrival_rates[period][cluster]
+        
+
+        exit_probs[period] = num/denom
+
     return exit_probs
 
 
@@ -298,6 +337,8 @@ if __name__ == "__main__":
     input("this might have been fixed. the big issue now is that the rewards do not account for the profit-maximizing price")
     reqs, epoch = trip_reqs.get_trip_requests()
     exit_probs = get_exit_probs()
+    print(exit_probs)
+    input("continue?")
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
     while not simulator.is_stopped():

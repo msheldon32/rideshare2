@@ -30,7 +30,7 @@ class MethodController:
         self.grid = grid
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
-        self.beta = 0.8
+        self.beta = 0.9
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
