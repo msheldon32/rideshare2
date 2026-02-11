@@ -30,7 +30,7 @@ class MethodController:
         self.grid = grid
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
-        self.beta = 0.9
+        self.beta = 0.95
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
@@ -98,14 +98,17 @@ class BufferController:
         # here we are accumulating the buffer to use on later jobs if it exceeds the estimated cost.
         #   this guarantees profitability without losing the right EV
 
-        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION - (self.tax_buffer[start_cluster]/2)
+        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
         price = max(total_opt, profit_max)
-        
-        self.tax_buffer[start_cluster] /= 2
-        self.tax_buffer[start_cluster] += price - total_opt
 
+        self.tax_buffer[start_cluster] += price - total_opt
+        excess = min((price - profit_max)/2, self.tax_buffer[start_cluster])
+        
+        self.tax_buffer[start_cluster] -= excess
+        price -= excess
+        
         return price
 
     def get_subsidy(self, period, _class, start, end):
