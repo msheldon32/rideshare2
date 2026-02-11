@@ -35,8 +35,9 @@ class Simulator:
         self.rate_tracker = estimator.RateTracker(n_clusters)
         self.controller = controller.Controller()
         #self.controller = controller.MethodController(0, self.grid)
-        self.controller = controller.BufferController(self.grid)
-        input("using buffer controller")
+        #self.controller = controller.BufferController(self.grid)
+        self.controller = controller.SmoothedController(0, self.grid)
+        input("using smoothed controller")
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
