@@ -35,21 +35,11 @@ class MethodController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-        input("clipping method")
-
     def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
         total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
         total_opt = min(max(total_opt, profit_max), fare/100)
-
-        """print(f"waiting_time: {waiting_time}")
-        print(f"cost home: {self.grid.get_travel_cost(_class, end_cluster, period)}")
-        print(f"old cost home: {self.grid.get_travel_cost(_class, start_cluster, period)}")
-
-        print(f"total_opt: {total_opt}")
-        print(f"profit_max: {profit_max}")
-        input("continue?")"""
 
         return (1-self.alpha)*total_opt + self.alpha*profit_max
 
@@ -84,7 +74,6 @@ class MethodController:
 
 class BufferController:
     def __init__(self, grid):
-        input("this is just a test, I am not sure if I need to consider the individual class when clearing the tax buffer, and if this always preserves the mean")
         self.grid = grid
 
         self.last_t = [0 for i in range(N_CLUSTERS)]
@@ -154,8 +143,6 @@ class SmoothedController:
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
-
-        input("clipping method")
 
     def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
         total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION

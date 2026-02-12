@@ -17,13 +17,17 @@ import policy
 from util import *
 
 class Simulator:
-    def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs):
+    def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
+                 controller_type="smoothed", alpha=0, seed=None):
+        if seed is not None:
+            random.seed(seed)
+
         self.requests = requests
         self.n_classes = n_classes
         self.n_clusters = n_clusters
         self.n_periods = n_periods
         self.exit_probs = exit_probs
-        
+
         self.epoch = epoch
 
         self.epoch_hour = self.epoch.hour
@@ -33,11 +37,17 @@ class Simulator:
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
 
         self.rate_tracker = estimator.RateTracker(n_clusters)
-        self.controller = controller.Controller()
-        #self.controller = controller.MethodController(0, self.grid)
-        #self.controller = controller.BufferController(self.grid)
-        self.controller = controller.SmoothedController(0, self.grid)
-        input("using smoothed controller")
+
+        if controller_type == "baseline":
+            self.controller = controller.Controller()
+        elif controller_type == "method":
+            self.controller = controller.MethodController(alpha, self.grid)
+        elif controller_type == "buffer":
+            self.controller = controller.BufferController(self.grid)
+        elif controller_type == "smoothed":
+            self.controller = controller.SmoothedController(alpha, self.grid)
+        else:
+            raise ValueError(f"Unknown controller type: {controller_type}")
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
@@ -333,14 +343,11 @@ def get_exit_probs():
 
 
 if __name__ == "__main__":
-    input("The controller isn't quite accurate to the paper as is, it decides taxes upon arrival while it should decide upon the next event *after* arrival")
-    input("this might have been fixed. the big issue now is that the rewards do not account for the profit-maximizing price")
     reqs, epoch = trip_reqs.get_trip_requests()
     exit_probs = get_exit_probs()
     print(exit_probs)
-    input("continue?")
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
@@ -353,15 +360,3 @@ if __name__ == "__main__":
     print(f"total requests: {sim_observer.total_requests}")
     print(f"total exit cost: {sim_observer.total_exit_cost}")
     sim_observer.save_trip_counts("trip_counts.csv")
-
-    """simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs)
-    while not simulator.is_stopped():
-        simulator.step()
-    sim_observer = simulator.observer
-    print(f"total trips: {sim_observer.total_trips}")
-    print(f"total requests: {sim_observer.total_requests}")
-    print(f"Net profit: {sim_observer.profit}")
-    print(f"Total reward: {sim_observer.total_reward}")
-    print(f"Total revenue: {sim_observer.total_revenue}")
-    print(f"Total waiting_cost: {sim_observer.total_waiting_cost}")
-    print(f"Total travel cost: {sim_observer.total_travel_cost}")"""
