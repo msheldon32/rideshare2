@@ -9,8 +9,6 @@ class Grid:
 
         self.distance_costs = [[[0 for j in range(N_CLUSTERS)] for i in range(N_CLUSTERS)] for t in range(N_PERIODS)]
 
-        input("To do: stochastic travel times")
-
         with open("data/distances.csv", "r") as csvfile:
             reader = csv.DictReader(csvfile)
 
