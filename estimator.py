@@ -28,12 +28,12 @@ class Estimator:
         self.controller = controller
 
         # EWMA smoothing factors
-        self.alpha_spawn = 0.95
-        self.alpha_service = 0.95
-        self.alpha_transition = 0.95
-        self.alpha_reward = 0.95
-        self.alpha_subsidy = 0.95
-        self.alpha_w = 0.95
+        self.alpha_spawn = 0.9
+        self.alpha_service = 0.9
+        self.alpha_transition = 0.9
+        self.alpha_reward = 0.9
+        self.alpha_subsidy = 0.9
+        self.alpha_w = 0.9
 
         # inter-spawn time estimates (per location)
         self.inter_spawn_estimates = [1.0 for _ in range(self.n_locations)]

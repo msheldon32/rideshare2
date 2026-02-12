@@ -327,7 +327,6 @@ def get_exit_probs():
             num += exit_rates[period][cluster]
             denom += arrival_rates[period][cluster]
         
-
         exit_probs[period] = num/denom
     
     return exit_probs

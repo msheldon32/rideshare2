@@ -142,6 +142,7 @@ class BufferController:
 
 class SmoothedController:
     def __init__(self, alpha, grid):
+        # control variate scheme for smoothing
         self.alpha = alpha
         self.last_t = [0 for i in range(N_CLUSTERS)]
         
