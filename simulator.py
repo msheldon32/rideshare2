@@ -78,6 +78,9 @@ class Simulator:
         self.next_req = 1
 
         for spawn in self.spawner.spawn_events:
+            # add Gaussian (-0.5, 0.5) noise to the spawn time
+            new_t = spawn[0] + random.gauss(-0.5, 0.5)
+            spawn = (new_t, spawn[1], spawn[2])
             heapq.heappush(self.next_events, self.spawner.get_spawn_event(spawn))
 
         for req in self.requests:
@@ -297,12 +300,6 @@ class Simulator:
 def get_exit_probs():
     exit_probs = [1.0] * N_PERIODS
 
-    #with open("data/exit_probs.csv") as csvfile:
-    #    reader = csv.DictReader(csvfile)
-    #    for row in reader:
-    #        exit_probs[int(row["period"])] = float(row["exit_prob"])
-    #return [x/2 for x in exit_probs]
-
     arrival_rates = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
     exit_rates = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
 
@@ -331,6 +328,7 @@ def get_exit_probs():
         num = 0
         denom = 0
 
+
         for idx in range(N_CLUSTERS//2):
             cluster = probs[idx][1]
 
@@ -346,8 +344,9 @@ if __name__ == "__main__":
     reqs, epoch = trip_reqs.get_trip_requests()
     exit_probs = get_exit_probs()
     print(exit_probs)
+    input("continue")
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0)
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type="baseline")
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer

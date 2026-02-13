@@ -28,7 +28,7 @@ class Spawner:
             for row in reader:
                 dt = datetime.fromisoformat(row["time"])
                 t = (dt-epoch).total_seconds()/3600
-                t = t - 0.25 # arrive 15 minutes early
+                #t = t - 0.25 # arrive 15 minutes early
                 self.spawn_events.append((t, int(row["period"]), int(row["cluster"])))
 
         #self.spawn_events.sort()
