@@ -81,11 +81,13 @@ def main():
     parser.add_argument("--controller", choices=["baseline", "method", "buffer", "smoothed"],
                         default="smoothed")
     parser.add_argument("--alpha", type=float, default=0)
-    parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
+    parser.add_argument("--num-runs", type=int, default=5)
+    parser.add_argument("--start-seed", type=int, default=0)
     parser.add_argument("--output-dir", default="results/")
     args = parser.parse_args()
 
-    results, observers = run_experiment(args.controller, args.alpha, args.seeds)
+    seeds = list(range(args.start_seed, args.start_seed + args.num_runs))
+    results, observers = run_experiment(args.controller, args.alpha, seeds)
 
     save_results(results, observers, args.output_dir)
 
