@@ -7,13 +7,13 @@ import trip_reqs
 import simulator
 
 
-def run_single(controller_type, alpha, seed):
+def run_single(controller_type, alpha, seed, ptg):
     """Run one simulation and return a metrics dict."""
     reqs, epoch = trip_reqs.get_trip_requests()
     exit_probs = simulator.get_exit_probs()
 
     sim = simulator.Simulator(reqs, 16, 16, 8, epoch, exit_probs,
-                              controller_type=controller_type, alpha=alpha, seed=seed)
+                              controller_type=controller_type, alpha=alpha, seed=seed, ptg=ptg)
     while not sim.is_stopped():
         sim.step()
 
@@ -34,13 +34,13 @@ def run_single(controller_type, alpha, seed):
     }, obs
 
 
-def run_experiment(controller_type, alpha, seeds):
+def run_experiment(controller_type, alpha, seeds, ptg):
     """Run multiple seeds and return per-run results + summary stats."""
     results = []
     observers = []
     for seed in seeds:
         print(f"=== Running seed={seed} controller={controller_type} alpha={alpha} ===")
-        metrics, obs = run_single(controller_type, alpha, seed)
+        metrics, obs = run_single(controller_type, alpha, seed, ptg)
         results.append(metrics)
         observers.append(obs)
     return results, observers
@@ -78,16 +78,17 @@ def save_results(results, observers, output_dir):
 
 def main():
     parser = argparse.ArgumentParser(description="Run rideshare simulation experiments")
-    parser.add_argument("--controller", choices=["baseline", "method", "buffer", "smoothed"],
+    parser.add_argument("--controller", choices=["baseline", "method", "buffer", "smoothed", "fixed"],
                         default="smoothed")
     parser.add_argument("--alpha", type=float, default=0)
     parser.add_argument("--num-runs", type=int, default=5)
     parser.add_argument("--start-seed", type=int, default=0)
     parser.add_argument("--output-dir", default="results/")
+    parser.add_argument("--ptg", type=float, default=0.3)
     args = parser.parse_args()
 
     seeds = list(range(args.start_seed, args.start_seed + args.num_runs))
-    results, observers = run_experiment(args.controller, args.alpha, seeds)
+    results, observers = run_experiment(args.controller, args.alpha, seeds, args.ptg)
 
     save_results(results, observers, args.output_dir)
 

@@ -13,7 +13,7 @@ def get_trip_requests():
     with open("data/requests_with_clusters.csv") as csvfile:
         reader = csv.DictReader(csvfile)
 
-        for row in reader:
+        for i, row in enumerate(reader):
             t = datetime.fromisoformat(row["started_on"])
             start = int(row["start_cluster"])
             end = int(row["end_cluster"])
@@ -28,6 +28,9 @@ def get_trip_requests():
             tip = float(row["tip"]) if len(row["tip"]) > 0 else 0
 
             if len(row["total_fare"]) == 0:
+                continue
+
+            if travel_time < 0:
                 continue
 
             travel_distance = float(row["distance_travelled"]) / METERS_PER_MILE

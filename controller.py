@@ -23,6 +23,29 @@ class Controller:
     def get_tax(self, cluster):
         return 0
 
+class FixedController:
+    def __init__(self, ptg):
+        self.ptg = ptg
+
+    def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
+        # this is in dollars.
+        if (fare/100) > 100:
+            print(f"fare: {fare/100}")
+            raise Exception("stop, invalid fare.")
+        return (1-self.ptg)*(fare/100)
+
+    def get_subsidy(self, period, _class, start, end):
+        return 0
+
+    def report_event(self, cluster, time, driver_ct, event_type):
+        pass
+
+    def reset(self, t):
+        pass
+
+    def get_tax(self, cluster):
+        return 0
+
 class MethodController:
     def __init__(self, alpha, grid):
         self.alpha = alpha

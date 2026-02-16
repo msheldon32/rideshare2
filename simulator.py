@@ -18,7 +18,7 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, seed=None):
+                 controller_type="smoothed", alpha=0, ptg=0.3, seed=None):
         if seed is not None:
             random.seed(seed)
 
@@ -46,6 +46,8 @@ class Simulator:
             self.controller = controller.BufferController(self.grid)
         elif controller_type == "smoothed":
             self.controller = controller.SmoothedController(alpha, self.grid)
+        elif controller_type == "fixed":
+            self.controller = controller.FixedController(ptg)
         else:
             raise ValueError(f"Unknown controller type: {controller_type}")
 
@@ -78,8 +80,8 @@ class Simulator:
         self.next_req = 1
 
         for spawn in self.spawner.spawn_events:
-            # add Gaussian (-0.5, 0.5) noise to the spawn time
-            new_t = spawn[0] + random.gauss(-0.5, 0.5)
+            # add Gaussian (-0.5, 1.0) noise to the spawn time
+            new_t = spawn[0] + random.gauss(-0.5, 1.0)
             spawn = (new_t, spawn[1], spawn[2])
             heapq.heappush(self.next_events, self.spawner.get_spawn_event(spawn))
 
@@ -145,7 +147,7 @@ class Simulator:
         driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))
         waiting_time = self.t - self.drivers[request.start_cluster][driver_class][driver_idx]
         del self.drivers[request.start_cluster][driver_class][driver_idx]
-        self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
+        self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
 
         self.clean_queue(request.start_cluster, request.time)
 
@@ -188,7 +190,7 @@ class Simulator:
             driver_counts = [len(x) for x in self.drivers[cluster]]
             n_drivers = sum(driver_counts)
             self.controller.report_event(cluster, self.t, n_drivers, "arrival")
-            self.estimators[self.get_period()].observe_queue_lengths(self.get_queue_lengths())
+            self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
             self.estimators[self.get_period()].observe_arrival(cluster, self.t)
             print(f"chose to enter queue: {cluster}")
         else:
@@ -324,18 +326,8 @@ def get_exit_probs():
             probs[cluster] = (exit_rates[period][cluster] / arrival_rates[period][cluster], cluster)
 
         probs.sort()
-
-        num = 0
-        denom = 0
-
-
-        for idx in range(N_CLUSTERS//2):
-            cluster = probs[idx][1]
-
-            num += exit_rates[period][cluster]
-            denom += arrival_rates[period][cluster]
         
-        exit_probs[period] = num/denom
+        exit_probs[period] = probs[0][0]
     
     return exit_probs
 

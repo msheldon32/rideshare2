@@ -83,8 +83,9 @@ class Estimator:
 
             self.waiting_time_estimates[loc] = self.alpha_w*old_w + (1-self.alpha_w)*new_w
 
-    def observe_queue_lengths(self, queue_lengths):
+    def observe_queue_lengths(self, t, queue_lengths):
         self.rate_tracker.queue_lengths = queue_lengths
+        self.update_w_estimates(t)
 
     def observe_spawn(self, location, t):
         inter_spawn = t - self.rate_tracker.last_spawn_time[location]
