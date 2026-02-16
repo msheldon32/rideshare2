@@ -18,7 +18,7 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.3, seed=None):
+                 controller_type="smoothed", alpha=0, ptg=0.3, seed=None, ewma_timestep=1):
         if seed is not None:
             random.seed(seed)
 
@@ -53,6 +53,9 @@ class Simulator:
 
         # one estimator per period
         self.estimators = [estimator.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
+
+        self.ewma_timestep = ewma_timestep
+        self.last_ewma_update = 0.0
 
         # default policy: always enter the queue at the current location
         default_policy = [([0.0] * i + [1.0] + [0.0] * (n_clusters - i)) for i in range(n_clusters)]
@@ -285,6 +288,11 @@ class Simulator:
             self.accumulate_rewards(event_t)
 
         self.t = event_t
+
+        if self.t - self.last_ewma_update >= self.ewma_timestep:
+            for est in self.estimators:
+                est.update_estimator()
+            self.last_ewma_update = self.t
 
         # recompute policies every 100 ticks
         #if self.t - self.last_policy_update >= 100:
