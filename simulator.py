@@ -334,8 +334,15 @@ def get_exit_probs():
             probs[cluster] = (exit_rates[period][cluster] / arrival_rates[period][cluster], cluster)
 
         probs.sort()
+
+        num = 0
+        denom = 0
+
+        for cluster in range(N_CLUSTERS//4):
+            num += exit_rates[period][cluster]
+            denom += arrival_rates[period][cluster]
         
-        exit_probs[period] = probs[0][0]
+        exit_probs[period] = num/denom
     
     return exit_probs
 
@@ -346,7 +353,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type="baseline")
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type="smoothed")
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer

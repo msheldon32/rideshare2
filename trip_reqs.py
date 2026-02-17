@@ -1,4 +1,5 @@
 import csv
+import math
 
 from datetime import datetime
 from dataclasses import dataclass
@@ -6,6 +7,13 @@ from dataclasses import dataclass
 from grid import Grid
 
 from util import *
+
+def haversine_miles(lat1, lon1, lat2, lon2):
+    R = 3958.8  # Earth radius in miles
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    return 2 * R * math.asin(math.sqrt(a))
 
 def get_trip_requests():
     _grid = Grid()
@@ -33,14 +41,33 @@ def get_trip_requests():
             if travel_time < 0:
                 continue
 
-            travel_distance = float(row["distance_travelled"]) / METERS_PER_MILE
+            # travel_distance = float(row["distance_travelled"]) / METERS_PER_MILE
+            # travel_cost = travel_distance * COST_PER_MILE + travel_time * RESERVATION
+            # total_fare = float(row["total_fare"]) + tip - travel_cost - BOOKING_FEE
+            #
+            # if float(row["total_fare"]) + tip > 100:
+            #     continue
+            #
+            # total_fare = int(total_fare*100)
+
+            start_lat = float(row["start_location_lat"])
+            start_lon = float(row["start_location_long"])
+            end_lat = float(row["end_location_lat"])
+            end_lon = float(row["end_location_long"])
+
+            travel_distance = haversine_miles(start_lat, start_lon, end_lat, end_lon)
             travel_cost = travel_distance * COST_PER_MILE + travel_time * RESERVATION
-            total_fare = float(row["total_fare"]) + tip - travel_cost - BOOKING_FEE
-            
-            if float(row["total_fare"]) + tip > 100:
+
+            rate_per_mile = float(row["rate_per_mile"]) if row["rate_per_mile"] else 0.99
+            rate_per_minute = float(row["rate_per_minute"]) if row["rate_per_minute"] else 0.25
+            travel_time_minutes = travel_time * 60
+
+            total_fare = float(row["base_fare"]) + rate_per_mile * travel_distance + rate_per_minute * travel_time_minutes + tip - travel_cost - BOOKING_FEE
+
+            if total_fare > 100 * 100:
                 continue
 
-            total_fare = int(total_fare*100)
+            total_fare = int(total_fare * 100)
 
             out_reqs.append([t, start, end, period, total_fare, travel_time])
             
