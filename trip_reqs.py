@@ -8,6 +8,9 @@ from grid import Grid
 
 from util import *
 
+DISTANCE_CORRECTION = 1.45
+TIME_CORRECTION = 1
+
 def haversine_miles(lat1, lon1, lat2, lon2):
     R = 3958.8  # Earth radius in miles
     dlat = math.radians(lat2 - lat1)
@@ -31,7 +34,7 @@ def get_trip_requests():
             if row["status"] == "b'DISPATCHED'":
                 travel_time = (datetime.fromisoformat(row["completed_on"]) - t).total_seconds() / 3600
             else:
-                travel_time = _grid.times[period][start][end]
+                travel_time = _grid.times[period][start][end] * TIME_CORRECTION
 
             tip = float(row["tip"]) if len(row["tip"]) > 0 else 0
 
@@ -55,7 +58,7 @@ def get_trip_requests():
             end_lat = float(row["end_location_lat"])
             end_lon = float(row["end_location_long"])
 
-            travel_distance = haversine_miles(start_lat, start_lon, end_lat, end_lon)
+            travel_distance = haversine_miles(start_lat, start_lon, end_lat, end_lon) * DISTANCE_CORRECTION
             travel_cost = travel_distance * COST_PER_MILE + travel_time * RESERVATION
 
             rate_per_mile = float(row["rate_per_mile"]) if row["rate_per_mile"] else 0.99
