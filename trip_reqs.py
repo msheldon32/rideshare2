@@ -8,7 +8,7 @@ from grid import Grid
 
 from util import *
 
-DISTANCE_CORRECTION = 1.45
+DISTANCE_CORRECTION = 1.42
 TIME_CORRECTION = 1
 
 def haversine_miles(lat1, lon1, lat2, lon2):
@@ -67,7 +67,10 @@ def get_trip_requests():
 
             surge_factor = max(float(row["surge_factor"]),1)
 
-            total_fare = (float(row["base_fare"]) + rate_per_mile * travel_distance + rate_per_minute * travel_time_minutes)*surge_factor + tip - travel_cost - BOOKING_FEE
+            gross_fare = (float(row["base_fare"]) + rate_per_mile * travel_distance + rate_per_minute * travel_time_minutes)*surge_factor 
+            gross_fare = max(gross_fare, 6)
+
+            total_fare = gross_fare + tip - travel_cost - BOOKING_FEE
 
             if total_fare > 100 * 100:
                 continue

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from util import *
 
-DISTANCE_CORRECTION = 1.45
+DISTANCE_CORRECTION = 1.42
 
 # Median speeds (mph) by period, derived from RideAustin dispatched trips
 PERIOD_SPEEDS = {

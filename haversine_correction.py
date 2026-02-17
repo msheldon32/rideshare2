@@ -14,10 +14,7 @@ def haversine_miles(lat1, lon1, lat2, lon2):
 
 
 def compute_corrections():
-    reported_distances = []
-    haversine_distances = []
-    reported_times = []
-    computed_times = []
+    dist_ratios = []
 
     with open("data/requests_with_clusters.csv") as f:
         reader = csv.DictReader(f)
@@ -47,38 +44,19 @@ def compute_corrections():
             if reported_time <= 0 or reported_time > 3:
                 continue
 
-            # Compute expected time from haversine assuming average speed
-            # We'll compare reported time to haversine distance to get effective speed
-            reported_distances.append(reported_dist)
-            haversine_distances.append(h_dist)
-            reported_times.append(reported_time)
+            dist_ratios.append(reported_dist / h_dist)
 
-    reported_distances.sort()
-    haversine_distances.sort()
-    reported_times.sort()
+    dist_ratios.sort()
+    n = len(dist_ratios)
 
-    n = len(reported_distances)
-    median_reported_dist = reported_distances[n // 2]
-    median_haversine_dist = haversine_distances[n // 2]
-    median_reported_time = reported_times[n // 2]
-
-    # Median reported speed (miles per hour) from reported distance and time
-    speeds = sorted(rd / rt for rd, rt in zip(reported_distances, reported_times) if rt > 0)
-    median_speed = speeds[len(speeds) // 2]
-
-    # Haversine speeds
-    h_speeds = sorted(hd / rt for hd, rt in zip(haversine_distances, reported_times) if rt > 0)
-    median_h_speed = h_speeds[len(h_speeds) // 2]
-
-    distance_correction = median_reported_dist / median_haversine_dist
+    distance_correction = dist_ratios[n // 2]
 
     print(f"Trips analyzed: {n}")
-    print(f"Median reported distance: {median_reported_dist:.2f} mi")
-    print(f"Median haversine distance: {median_haversine_dist:.2f} mi")
-    print(f"Distance correction factor: {distance_correction:.4f}")
-    print(f"Median reported trip time: {median_reported_time * 60:.1f} min")
-    print(f"Median reported speed: {median_speed:.1f} mph")
-    print(f"Median haversine speed: {median_h_speed:.1f} mph")
+    print(f"Per-trip distance ratio (reported / haversine):")
+    print(f"  median: {distance_correction:.4f}")
+    print(f"  mean:   {sum(dist_ratios)/n:.4f}")
+    print(f"  p25:    {dist_ratios[n//4]:.4f}")
+    print(f"  p75:    {dist_ratios[3*n//4]:.4f}")
 
     return distance_correction
 
