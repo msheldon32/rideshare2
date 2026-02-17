@@ -6,9 +6,9 @@ class Controller:
 
     def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
         # this is in dollars.
-        if (fare/100) > 100:
-            print(f"fare: {fare/100}")
-            raise Exception("stop, invalid fare.")
+        #if (fare/100) > 100:
+        #    print(f"fare: {fare/100}")
+        #    raise Exception("stop, invalid fare.")
         return fare/100
 
     def get_subsidy(self, period, _class, start, end):
@@ -29,9 +29,9 @@ class FixedController:
 
     def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
         # this is in dollars.
-        if (fare/100) > 100:
-            print(f"fare: {fare/100}")
-            raise Exception("stop, invalid fare.")
+        #if (fare/100) > 100:
+        #    print(f"fare: {fare/100}")
+        #    raise Exception("stop, invalid fare.")
         return (1-self.ptg)*(fare/100)
 
     def get_subsidy(self, period, _class, start, end):

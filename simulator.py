@@ -353,7 +353,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type="smoothed")
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type="baseline")
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
