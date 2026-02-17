@@ -4,7 +4,7 @@ class Controller:
     def __init__(self):
         pass
 
-    def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
+    def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         # this is in dollars.
         #if (fare/100) > 100:
         #    print(f"fare: {fare/100}")
@@ -27,12 +27,14 @@ class FixedController:
     def __init__(self, ptg):
         self.ptg = ptg
 
-    def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
+    def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         # this is in dollars.
         #if (fare/100) > 100:
         #    print(f"fare: {fare/100}")
         #    raise Exception("stop, invalid fare.")
-        return (1-self.ptg)*(fare/100)
+        #return (1-self.ptg)*(fare/100)
+        deduction = self.ptg * (gross_fare/100)
+        return (fare/100)-deduction
 
     def get_subsidy(self, period, _class, start, end):
         return 0
@@ -106,7 +108,7 @@ class BufferController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-    def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
+    def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         # here we are accumulating the buffer to use on later jobs if it exceeds the estimated cost.
         #   this guarantees profitability without losing the right EV
 
@@ -167,7 +169,7 @@ class SmoothedController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-    def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
+    def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 

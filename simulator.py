@@ -154,7 +154,7 @@ class Simulator:
 
         self.clean_queue(request.start_cluster, request.time)
 
-        remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.net_fare_cents, n_drivers, request.time, waiting_time)
+        remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.gross_fare_cents, request.net_fare_cents, n_drivers, request.time, waiting_time)
 
         fare = request.net_fare_cents / 100
 
