@@ -100,7 +100,7 @@ class Estimator:
         self._spawn_buffer[location].append(inter_spawn)
         self.rate_tracker.last_spawn_time[location] = t
 
-    def observe_arrival(self, location, t):
+    def observe_arrival(self, location, _class, t):
         self.rate_tracker.last_arrival_time[location] = t
         self.rate_tracker.last_arrival_time_in_period[self.period][location] = t
 

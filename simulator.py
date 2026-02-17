@@ -194,7 +194,7 @@ class Simulator:
             n_drivers = sum(driver_counts)
             self.controller.report_event(cluster, self.t, n_drivers, "arrival")
             self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
-            self.estimators[self.get_period()].observe_arrival(cluster, self.t)
+            self.estimators[self.get_period()].observe_arrival(cluster, _class, self.t)
             print(f"chose to enter queue: {cluster}")
         else:
             print(f"moving to {action}.")
@@ -342,7 +342,7 @@ def get_exit_probs():
             num += exit_rates[period][cluster]
             denom += arrival_rates[period][cluster]
         
-        exit_probs[period] = num/denom
+        exit_probs[period] = probs[0][0]#num/denom
     
     return exit_probs
 
@@ -353,7 +353,9 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type="baseline")
+    controller_type = "fixed"
+
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
@@ -365,4 +367,5 @@ if __name__ == "__main__":
     print(f"total trips: {sim_observer.total_trips}")
     print(f"total requests: {sim_observer.total_requests}")
     print(f"total exit cost: {sim_observer.total_exit_cost}")
-    sim_observer.save_trip_counts("trip_counts.csv")
+    if controller_type == "baseline":
+        sim_observer.save_trip_counts("trip_counts.csv")
