@@ -65,7 +65,9 @@ def get_trip_requests():
             rate_per_minute = float(row["rate_per_minute"]) if row["rate_per_minute"] else 0.25
             travel_time_minutes = travel_time * 60
 
-            total_fare = float(row["base_fare"]) + rate_per_mile * travel_distance + rate_per_minute * travel_time_minutes + tip - travel_cost - BOOKING_FEE
+            surge_factor = max(float(row["surge_factor"]),1)
+
+            total_fare = (float(row["base_fare"]) + rate_per_mile * travel_distance + rate_per_minute * travel_time_minutes)*surge_factor + tip - travel_cost - BOOKING_FEE
 
             if total_fare > 100 * 100:
                 continue
