@@ -32,7 +32,7 @@ class DriverModel:
     def incremental_rewards(self, t):
         r = [[0 for i in range(self.n_actions)] for j in range(N_CLUSTERS)]
 
-        self.estimator.update_w_estimates(t)
+        #self.estimator.update_w_estimates(t)
 
         for cluster in range(N_CLUSTERS):
             # cost of leaving

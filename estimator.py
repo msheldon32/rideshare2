@@ -85,7 +85,7 @@ class Estimator:
             else:
                 mu = len(self.rate_tracker.services[loc])/self.time_window
 
-            old_w = self.waiting_time_estimates[loc]
+            #old_w = self.waiting_time_estimates[loc]
             #new_w = (1 + self.rate_tracker.queue_lengths[loc])/mu
             new_w = (1+ self.rate_tracker.queue_lengths[loc])*self.inter_service_estimates[loc]
 
@@ -93,7 +93,6 @@ class Estimator:
 
     def observe_queue_lengths(self, t, queue_lengths):
         self.rate_tracker.queue_lengths = queue_lengths
-        self.update_w_estimates(t)
 
     def observe_spawn(self, location, t):
         inter_spawn = t - self.rate_tracker.last_spawn_time[location]

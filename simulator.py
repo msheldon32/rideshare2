@@ -139,7 +139,7 @@ class Simulator:
         driver_counts = [len(x) for x in self.drivers[request.start_cluster]]
         n_drivers = sum(driver_counts)
 
-        self.controller.report_event(request.start_cluster, request.time, n_drivers, "departure")
+        self.controller.report_event(request.start_cluster, request.time, n_drivers-1, "departure")
 
         if n_drivers == 0:
             self.observer.observe_request(request, None, False)
@@ -193,7 +193,7 @@ class Simulator:
             self.drivers[cluster][_class].append(self.t)
             driver_counts = [len(x) for x in self.drivers[cluster]]
             n_drivers = sum(driver_counts)
-            self.controller.report_event(cluster, self.t, n_drivers, "arrival")
+            self.controller.report_event(cluster, self.t, n_drivers+1, "arrival")
             self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
             self.estimators[self.get_period()].observe_arrival(cluster, _class, self.t)
             print(f"chose to enter queue: {cluster}")
@@ -292,6 +292,7 @@ class Simulator:
 
         if self.t - self.last_ewma_update >= self.ewma_timestep:
             for est in self.estimators:
+                est.update_w_estimates(self.t)
                 est.update_estimator()
             self.last_ewma_update = self.t
 
