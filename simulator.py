@@ -292,7 +292,7 @@ class Simulator:
 
         if self.t - self.last_ewma_update >= self.ewma_timestep:
             for est in self.estimators:
-                est.update_w_estimates(self.t)
+                #est.update_w_estimates(self.t)
                 est.update_estimator()
             self.last_ewma_update = self.t
 

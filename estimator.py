@@ -45,10 +45,10 @@ class Estimator:
         self.transition_estimates = [[(1 / self.n_locations) for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
         # reward estimates: [origin][location]
-        self.reward_estimates = [[8.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+        self.reward_estimates = [[10.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
         # fare estimates: [origin][location]
-        self.fare_estimates = [[8.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+        self.fare_estimates = [[10.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
         # subsidy estimates: [origin][start][end]
         self.subsidy_estimates = [[[0.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
@@ -92,6 +92,7 @@ class Estimator:
             self._w_buffer[loc].append(new_w)
 
     def observe_queue_lengths(self, t, queue_lengths):
+        self.update_w_estimates(t)
         self.rate_tracker.queue_lengths = queue_lengths
 
     def observe_spawn(self, location, t):
