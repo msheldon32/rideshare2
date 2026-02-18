@@ -32,9 +32,7 @@ class FixedController:
         #if (fare/100) > 100:
         #    print(f"fare: {fare/100}")
         #    raise Exception("stop, invalid fare.")
-        #return (1-self.ptg)*(fare/100)
-        deduction = self.ptg * (gross_fare/100)
-        return (fare/100)-deduction
+        return (1-self.ptg)*(fare/100)
 
     def get_subsidy(self, period, _class, start, end):
         return 0

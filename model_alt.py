@@ -5,8 +5,8 @@ import random
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 0.5
-        self.min_boltzmann = 0.5
+        self.boltzmann_tau = 0.3
+        self.min_boltzmann = 0.3
         self.boltzmann_decay = 0.99995
 
     def decay(self):
@@ -78,7 +78,7 @@ class DriverModel:
 
                 for end_cluster in range(N_CLUSTERS):
                     q_values[cluster][cluster] += (1-self.exit_prob)*p_estimates[cluster][end_cluster] * v_values[end_cluster]
-                    q_values[cluster][cluster] -= (self.exit_prob)*p_estimates[cluster][end_cluster] * self.grid.get_travel_cost(end_cluster, self.destination, self.period)
+                    q_values[cluster][cluster] -= (self.exit_prob)*p_estimates[cluster][end_cluster] * self.grid.get_rebalance_cost(end_cluster, self.destination, self.period)
                 if abs(sum(p_estimates[cluster]) - 1) > 0.01:
                     raise Exception(f"bad probability: {sum(p_estimates[cluster])}")
 

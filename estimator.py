@@ -45,15 +45,15 @@ class Estimator:
         self.transition_estimates = [[(1 / self.n_locations) for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
         # reward estimates: [origin][location]
-        self.reward_estimates = [[10.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+        self.reward_estimates = [[8.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
         # fare estimates: [origin][location]
-        self.fare_estimates = [[10.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+        self.fare_estimates = [[8.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
         # subsidy estimates: [origin][start][end]
         self.subsidy_estimates = [[[0.0 for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
 
-        self.waiting_time_estimates = [1.0 for _ in range(self.n_locations)]
+        self.waiting_time_estimates = [0.5 for _ in range(self.n_locations)]
 
         self.time_window = 2
 
@@ -116,7 +116,7 @@ class Estimator:
         self._transition_buffer.append((start, end))
 
     def observe_reward(self, origin, location, reward):
-        reward = min(reward, 50)
+        #reward = min(reward, 50)
         self._reward_buffer[origin][location].append(reward)
 
     def observe_fare(self, origin, location, fare):

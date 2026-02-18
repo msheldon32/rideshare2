@@ -62,11 +62,11 @@ class Simulator:
         #self.models = [[model.DriverModel(default_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.exploration = [[model_alt.Exploration() for _class in range(n_classes)] for period in range(n_periods)]
-        self.models = [[model_alt.DriverModel(self.grid, 
-                                              period, 
-                                              _class, 
-                                              self.estimators[period], 
-                                              self.exit_probs[period], 
+        self.models = [[model_alt.DriverModel(self.grid,
+                                              period,
+                                              _class,
+                                              self.estimators[period],
+                                              self.exit_probs[period],
                                               self.exploration[period][_class]) for _class in range(n_classes)] for period in range(n_periods)]
 
         self.drivers = [[[] for i in range(n_classes)] for j in range(n_clusters)] # contains the time entered for each driver of each class
@@ -177,8 +177,9 @@ class Simulator:
     def decide(self, cluster, _class):
         period = self.get_period()
         self.clean_queue(cluster, self.t)
-        self.estimators[self.get_period()].clean_rewards(self.t)
-        action = self.models[period][_class].decide(cluster, self.t)
+        #self.estimators[self.get_period()].clean_rewards(self.t)
+        #action = self.models[period][_class].decide(cluster)
+        action = self.models[period][_class].decide(cluster, self.t)  # model_alt
 
         if action == -1:
             # vehicle leaves the system
@@ -294,7 +295,7 @@ class Simulator:
                 est.update_estimator()
             self.last_ewma_update = self.t
 
-        # recompute policies every 100 ticks
+        # recompute policies periodically
         #if self.t - self.last_policy_update >= 100:
         #    self.update_policies()
 
