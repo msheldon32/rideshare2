@@ -276,6 +276,7 @@ class Simulator:
         self.observer.total_travel_cost += transit_cost
 
     def step(self):
+        self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
         event_t, event_type, event = heapq.heappop(self.next_events)
 
 
@@ -355,12 +356,13 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "smoothed"
+    controller_type = "baseline"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
+    print(f"For controller type: {controller_type}")
     print(f"Net profit: {sim_observer.profit}")
     print(f"Total reward: {sim_observer.total_reward}")
     print(f"Total revenue: {sim_observer.total_revenue}")

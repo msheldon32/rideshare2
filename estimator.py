@@ -31,7 +31,7 @@ class Estimator:
         self.alpha_spawn = 0.95
         self.alpha_service = 0.95
         self.alpha_transition = 0.95
-        self.alpha_reward = 0.95
+        self.alpha_reward = 0.9    # this one is at 0.9 since otherwise it barely changes for the first 1000 or so hours, the other ones change faster
         self.alpha_subsidy = 0.95
         self.alpha_w = 0.95
 
