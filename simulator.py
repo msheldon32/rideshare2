@@ -127,6 +127,7 @@ class Simulator:
             print(f"({period}) updating policy")
             print(f"arrival_rates: {config.arrival_rates}")
             print(f"service_rates: {config.service_rates}")
+            print(f"vehicle_rewards: {config.vehicle_rewards}")
 
             new_policies = policy.get_policies(config)
             for _class in range(self.n_classes):
@@ -202,7 +203,7 @@ class Simulator:
         fare = request.net_fare_cents / 100
 
         # estimator observations
-        self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, remuneration)
+        self.estimators[self.get_period()].methodobserve_reward(driver_class, request.start_cluster, remuneration)
         if self.swap_reward_fare:
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
         else:

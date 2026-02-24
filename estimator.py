@@ -27,30 +27,6 @@ class Estimator:
         self.n_locations = N_CLUSTERS
         self.controller = controller
 
-        # EWMA smoothing factors
-        self.max_alpha_spawn = 0.95
-        self.max_alpha_service = 0.95
-        self.max_alpha_transition = 0.95
-        self.max_alpha_reward = 0.9
-        self.max_alpha_fare = 0.9
-        self.max_alpha_tax = 0.9
-        self.max_alpha_subsidy = 0.9
-        self.max_alpha_w = 0.95
-        self.max_alpha_tax = 0.95
-        self.max_alpha_queue = 0.95
-
-        self.alpha_spawn = 0.95
-        self.alpha_service = 0.95
-        self.alpha_transition = 0.95
-        self.alpha_reward = 0.9
-        self.alpha_fare = 0.9
-        self.alpha_tax = 0.9
-        self.alpha_subsidy = 0.95
-        self.alpha_w = 0.95
-        self.alpha_tax = 0.95
-        self.alpha_queue = 0
-
-        self.step = 0
 
 
         # inter-spawn time estimates (per location)
@@ -157,98 +133,60 @@ class Estimator:
         self._subsidy_buffer[origin][start][end].append(subsidy)
 
     def update_estimator(self):
-        # Increase alphas toward their max values as steps accumulate
-        self.step += 1
-        w = self.step / (self.step + 30)
-        self.alpha_spawn      = self.max_alpha_spawn      * w
-        self.alpha_service    = self.max_alpha_service    * w
-        self.alpha_transition = self.max_alpha_transition * w
-        self.alpha_reward     = self.max_alpha_reward     * w
-        self.alpha_fare     = self.max_alpha_fare     * w
-        self.alpha_tax     = self.max_alpha_tax     * w
-        self.alpha_subsidy    = self.max_alpha_subsidy    * w
-        self.alpha_w          = self.max_alpha_w          * w
-        self.alpha_queue      = self.max_alpha_queue      * w
-
         # Spawn buffer
         for loc in range(self.n_locations):
             if self._spawn_buffer[loc]:
-                mean_val = sum(self._spawn_buffer[loc]) / len(self._spawn_buffer[loc])
-                self.inter_spawn_estimates[loc] = self.alpha_spawn * self.inter_spawn_estimates[loc] + (1 - self.alpha_spawn) * mean_val
-                self._spawn_buffer[loc].clear()
+                self.inter_spawn_estimates[loc] = sum(self._spawn_buffer[loc]) / len(self._spawn_buffer[loc])
 
         # Service buffer
         for loc in range(self.n_locations):
             if self._service_buffer[loc]:
-                mean_val = sum(self._service_buffer[loc]) / len(self._service_buffer[loc])
-                self.inter_service_estimates[loc] = self.alpha_service * self.inter_service_estimates[loc] + (1 - self.alpha_service) * mean_val
-                self._service_buffer[loc].clear()
+                self.inter_service_estimates[loc] = sum(self._service_buffer[loc]) / len(self._service_buffer[loc])
 
         # Transition buffer
         if self._transition_buffer:
-            # Count transitions per start location
             counts = [[0] * self.n_locations for _ in range(self.n_locations)]
             row_totals = [0] * self.n_locations
             for start, end in self._transition_buffer:
                 counts[start][end] += 1
                 row_totals[start] += 1
-            # EWMA blend row-by-row for rows that have observations
             for i in range(self.n_locations):
                 if row_totals[i] > 0:
                     for j in range(self.n_locations):
-                        empirical = counts[i][j] / row_totals[i]
-                        self.transition_estimates[i][j] = self.alpha_transition * self.transition_estimates[i][j] + (1 - self.alpha_transition) * empirical
-            self._transition_buffer.clear()
+                        self.transition_estimates[i][j] = counts[i][j] / row_totals[i]
 
         # Reward buffer
         for origin in range(self.n_locations):
             for loc in range(self.n_locations):
                 if self._reward_buffer[origin][loc]:
-                    mean_val = sum(self._reward_buffer[origin][loc]) / len(self._reward_buffer[origin][loc])
-                    self.reward_estimates[origin][loc] = self.alpha_reward * self.reward_estimates[origin][loc] + (1 - self.alpha_reward) * mean_val
-                    self._reward_buffer[origin][loc].clear()
-                else:
-                    # increase the reward under no observations to avoid freezeout
-                    self.reward_estimates[origin][loc] = self.alpha_reward * self.reward_estimates[origin][loc] + (1 - self.alpha_reward) * self.fare_estimates[loc]
+                    self.reward_estimates[origin][loc] = sum(self._reward_buffer[origin][loc]) / len(self._reward_buffer[origin][loc])
 
         # Fare buffer
         for loc in range(self.n_locations):
             if self._fare_buffer[loc]:
-                mean_val = sum(self._fare_buffer[loc]) / len(self._fare_buffer[loc])
-                self.fare_estimates[loc] = self.alpha_reward * self.fare_estimates[loc] + (1 - self.alpha_reward) * mean_val
-                self._fare_buffer[loc].clear()
+                self.fare_estimates[loc] = sum(self._fare_buffer[loc]) / len(self._fare_buffer[loc])
 
         # Tax buffer
         for loc in range(self.n_locations):
             if self._tax_buffer[loc]:
-                mean_val = sum(self._tax_buffer[loc]) / len(self._tax_buffer[loc])
-                self.tax_estimates[loc] = self.alpha_reward * self.tax_estimates[loc] + (1 - self.alpha_reward) * mean_val
-                self._tax_buffer[loc].clear()
-            else:
-                self.tax_estimates[loc] = self.alpha_reward * self.tax_estimates[loc]
+                self.tax_estimates[loc] = sum(self._tax_buffer[loc]) / len(self._tax_buffer[loc])
 
         # Subsidy buffer
         for origin in range(self.n_locations):
             for start in range(self.n_locations):
                 for end in range(self.n_locations):
                     if self._subsidy_buffer[origin][start][end]:
-                        mean_val = sum(self._subsidy_buffer[origin][start][end]) / len(self._subsidy_buffer[origin][start][end])
-                        self.subsidy_estimates[origin][start][end] = self.alpha_subsidy * self.subsidy_estimates[origin][start][end] + (1 - self.alpha_subsidy) * mean_val
-                        self._subsidy_buffer[origin][start][end].clear()
+                        self.subsidy_estimates[origin][start][end] = sum(self._subsidy_buffer[origin][start][end]) / len(self._subsidy_buffer[origin][start][end])
 
         # Waiting time buffer
         for loc in range(self.n_locations):
             if self._w_buffer[loc]:
-                mean_val = sum(self._w_buffer[loc]) / len(self._w_buffer[loc])
-                self.waiting_time_estimates[loc] = self.alpha_w * self.waiting_time_estimates[loc] + (1 - self.alpha_w) * mean_val
-                self._w_buffer[loc].clear()
+                self.waiting_time_estimates[loc] = sum(self._w_buffer[loc]) / len(self._w_buffer[loc])
 
         # Queue length buffer
         for loc in range(self.n_locations):
             if self._queue_buffer[loc]:
-                mean_val = sum(self._queue_buffer[loc]) / len(self._queue_buffer[loc])
-                self.queue_length_estimates[loc] = self.alpha_queue * self.queue_length_estimates[loc] + (1 - self.alpha_queue) * mean_val
-                self._queue_buffer[loc].clear()
+                self.queue_length_estimates[loc] = sum(self._queue_buffer[loc]) / len(self._queue_buffer[loc])
 
     def get_arrival_rates(self):
         return [1.0 / self.inter_spawn_estimates[i] for i in range(self.n_locations)]
@@ -257,12 +195,26 @@ class Estimator:
         return [1.0 / self.inter_service_estimates[i] for i in range(self.n_locations)]
 
     def get_config(self, exit_prob):
+        adjusted_rewards = [[0.0] * self.n_locations for _ in range(self.n_locations)]
+        for _class in range(self.n_locations):
+            for origin in range(self.n_locations):
+                origin_return_cost = self.grid.get_travel_cost(origin, _class, self.period)
+                expected_dest_return_cost = sum(
+                    self.transition_estimates[origin][dest] * self.grid.get_travel_cost(dest, _class, self.period)
+                    for dest in range(self.n_locations)
+                )
+                adjusted_rewards[_class][origin] = (
+                    self.reward_estimates[_class][origin]
+                    + origin_return_cost
+                    - expected_dest_return_cost
+                )
+
         return ModelConfig(
             grid=self.grid,
             period=self.period,
             arrival_rates=self.get_arrival_rates(),
             service_rates=self.get_service_rates(),
-            vehicle_rewards=self.reward_estimates,
+            vehicle_rewards=adjusted_rewards,
             producer_rewards=self.fare_estimates,
             exit_prob=exit_prob,
             customer_transitions=self.transition_estimates
