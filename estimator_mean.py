@@ -214,10 +214,12 @@ class Estimator:
                 self.fare_estimates[loc] = sum(buf) / len(buf)
             buf.clear()
 
-        # Taxes: use mean of observations since last flush, else default to 0
+        # Taxes: EWMA with beta=0.5, default to 0 if no observations; capped at -2*fare
         for loc in range(self.n_locations):
             buf = self._tax_buffer[loc]
-            self.tax_estimates[loc] = sum(buf) / len(buf) if buf else 0.0
+            mean_val = sum(buf) / len(buf) if buf else 0.0
+            self.tax_estimates[loc] = 0.5 * self.tax_estimates[loc] + 0.5 * mean_val
+            self.tax_estimates[loc] = max(self.tax_estimates[loc], -2.0 * self.fare_estimates[loc])
             buf.clear()
 
     # ------------------------------------------------------------------
