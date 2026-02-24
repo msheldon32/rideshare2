@@ -35,6 +35,7 @@ class Estimator:
         self.controller = controller
 
         self.use_fare_tax = use_fare_tax
+        self.tax_scale = 0.0
         self.time_window = 2
 
         # --- Observation buffers (raw events since last update_estimator call) ---
@@ -248,7 +249,7 @@ class Estimator:
         for _class in range(self.n_locations):
             for origin in range(self.n_locations):
                 if self.use_fare_tax:
-                    base_reward = self.fare_estimates[origin] - self.tax_estimates[origin]
+                    base_reward = self.fare_estimates[origin] - self.tax_scale * self.tax_estimates[origin]
                 else:
                     base_reward = self.reward_estimates[_class][origin]
                 origin_return_cost = self.grid.get_travel_cost(origin, _class, self.period)

@@ -122,6 +122,10 @@ class Simulator:
         print("done.")
 
     def update_policies(self):
+        tax_scale = min(1.0, self.t / 3000.0)
+        for est in self.estimators:
+            est.tax_scale = tax_scale
+
         for period in range(self.n_periods):
             config = self.estimators[period].get_config(self.exit_probs[period])
             print("-----------------------------------------------")
@@ -166,6 +170,8 @@ class Simulator:
         if not self.observer_reset and self.t >= 3000:
             self.observer.reset()
             self.observer_reset = True
+            for est in self.estimators:
+                est.tax_scale = 1.0
 
         self.clean_queue(request.start_cluster, self.t)
         self.estimators[self.get_period()].observe_service(request.start_cluster, self.t)
