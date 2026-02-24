@@ -66,7 +66,13 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
 def get_policies(model_config, input_vehicle_rewards=None):
     prob, total_arrival_rates, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob(model_config, input_vehicle_rewards)
-    prob.solve(solver=cp.SCS)
+    try:
+        prob.solve(solver=cp.CLARABEL)
+        if prob.status not in ("optimal", "optimal_inaccurate"):
+            raise ValueError(f"CLARABEL status: {prob.status}")
+    except Exception as e:
+        print(f"CLARABEL failed ({e}), falling back to SCS")
+        prob.solve(solver=cp.SCS)
 
     n_loc = len(model_config.locations)
 

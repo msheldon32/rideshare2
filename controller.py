@@ -32,7 +32,8 @@ class FixedController:
         #if (fare/100) > 100:
         #    print(f"fare: {fare/100}")
         #    raise Exception("stop, invalid fare.")
-        return (1-self.ptg)*(fare/100)
+        #return (1-self.ptg)*(fare/100)
+        return (fare/100) - ((self.ptg)*(gross_fare/100))
 
     def get_subsidy(self, period, _class, start, end):
         return 0
@@ -58,11 +59,11 @@ class MethodController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-    def get_price(self, period, _class, start_cluster, end_cluster, fare, driver_ct, time, waiting_time):
+    def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
-        total_opt = min(max(total_opt, profit_max), fare/100)
+        #total_opt = min(max(total_opt, profit_max), fare/100)
 
         return (1-self.alpha)*total_opt + self.alpha*profit_max
 
@@ -73,78 +74,29 @@ class MethodController:
         #if event_type == "departure":
         #    self.last_t[cluster] = time
         #    return
+        tax = None
         if self.last_event_type[cluster] == "arrival":
             Qminus = self.last_length[cluster]
             tax = ((time-self.last_t[cluster]) * (Qminus**2))
-            self.last_tax[cluster] = (1-self.beta)*tax + (self.beta*self.last_tax[cluster])
+
+            if time - self.last_t[cluster] > 2:
+                # just skip
+                self.last_tax[cluster] = self.last_tax[cluster]
+            else:
+                self.last_tax[cluster] = (1-self.beta)*tax + (self.beta*self.last_tax[cluster])
 
         #print(f"setting tax to: {tax}")
         #print(f"smoothed tax: {self.last_tax[cluster]}")
         #print(f"time between events: {time-self.last_t[cluster]}")
         #print(f"driver_ct: {driver_ct}")
         if event_type == "arrival":
-            self.last_t[cluster] = time
+            self.last_length[cluster] = driver_ct
         #input("continue")
 
         self.last_event_type[cluster] = event_type
-        self.last_length[cluster] = driver_ct
+        self.last_t[cluster] = time
 
-    def reset(self, t):
-        self.last_t = [t for i in range(N_CLUSTERS)]
-
-    def get_tax(self, cluster):
-        return self.last_tax[cluster]
-
-class BufferController:
-    def __init__(self, grid):
-        self.grid = grid
-
-        self.last_t = [0 for i in range(N_CLUSTERS)]
-        self.last_tax = [0 for i in range(N_CLUSTERS)]
-        self.tax_buffer = [0 for i in range(N_CLUSTERS)]
-
-        self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
-        self.last_length = [0 for i in range(N_CLUSTERS)]
-
-    def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
-        # here we are accumulating the buffer to use on later jobs if it exceeds the estimated cost.
-        #   this guarantees profitability without losing the right EV
-
-        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
-        profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
-
-        price = max(total_opt, 0)
-
-        self.tax_buffer[start_cluster] += price - total_opt
-        excess = min((price)/2, self.tax_buffer[start_cluster])
-        
-        self.tax_buffer[start_cluster] -= excess
-        price -= excess
-        
-        return price
-
-    def get_subsidy(self, period, _class, start, end):
-        return 0
-
-    def report_event(self, cluster, time, driver_ct, event_type):
-        #if event_type == "departure":
-        #    self.last_t[cluster] = time
-        #    return
-        if self.last_event_type[cluster] == "arrival":
-            Qminus = self.last_length[cluster]
-            tax = ((time-self.last_t[cluster]) * (Qminus**2))
-            self.last_tax[cluster] = tax
-
-        #print(f"setting tax to: {tax}")
-        #print(f"smoothed tax: {self.last_tax[cluster]}")
-        #print(f"time between events: {time-self.last_t[cluster]}")
-        #print(f"driver_ct: {driver_ct}")
-        if event_type == "arrival":
-            self.last_t[cluster] = time
-        #input("continue")
-
-        self.last_event_type[cluster] = event_type
-        self.last_length[cluster] = driver_ct
+        return tax*RESERVATION if tax is not None else None
 
     def reset(self, t):
         self.last_t = [t for i in range(N_CLUSTERS)]
@@ -173,7 +125,7 @@ class SmoothedController:
         total_opt = (fare/100) - tax*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
-        total_opt = min(max(total_opt, profit_max), fare/100)
+        #total_opt = min(max(total_opt, profit_max), fare/100)
 
         return (1-self.alpha)*total_opt + self.alpha*profit_max
 
@@ -184,11 +136,24 @@ class SmoothedController:
         #if event_type == "departure":
         #    self.last_t[cluster] = time
         #    return
+        tax = None
         if self.last_event_type[cluster] == "arrival":
             Qminus = self.last_length[cluster]
             Qsquared_est = (Qminus - self.q_estimate[cluster])**2 + (self.q_estimate[cluster])**2
             tax = (time-self.last_t[cluster]) * Qsquared_est
-            self.tax_buffers[cluster].append(tax)
+            print(f"applying tax of {tax}")
+            print(f"cluster: {cluster}")
+            print(f"q estimate: {self.q_estimate[cluster]}")
+            print(f"Qsquared_est: {Qsquared_est}")
+            print(f"Qminus: {Qminus}")
+            print(f"last event was an arrival at {self.last_t[cluster]}, new event is at {time}")
+            #input("continue")
+
+            if time - self.last_t[cluster] > 2:
+                # just ignore long differences, this is an artifact of expanding availability in Austin
+                self.tax_buffers[cluster].append(0)
+            else:
+                self.tax_buffers[cluster].append(tax)
 
             self.q_estimate[cluster] = (1-self.beta)*self.last_length[cluster] + self.beta*self.q_estimate[cluster]
 
@@ -198,11 +163,12 @@ class SmoothedController:
         #print(f"time between events: {time-self.last_t[cluster]}")
         #print(f"driver_ct: {driver_ct}")
         if event_type == "arrival":
-            self.last_t[cluster] = time
-        #input("continue")
+            self.last_length[cluster] = driver_ct
 
         self.last_event_type[cluster] = event_type
-        self.last_length[cluster] = driver_ct
+        self.last_t[cluster] = time
+
+        return tax*RESERVATION if tax is not None else None
 
     def reset(self, t):
         self.last_t = [t for i in range(N_CLUSTERS)]

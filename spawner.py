@@ -23,6 +23,8 @@ class Spawner:
         self.spawn_events = []
         self.next_spawn = 0
 
+        self.epoch_hour = epoch.hour
+
         with open("data/spawns.csv") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
@@ -51,7 +53,7 @@ class Spawner:
         self.next_spawn = 0
 
     def get_spawn_poisson(self, start_t):
-        period = get_period(start_t)
+        period = get_period(start_t + self.epoch_hour)
         # generate an exponential distribution with total_period_rate
         rate = self.total_period_rates[period]
         delta_t = -math.log(random.random())/rate

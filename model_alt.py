@@ -5,15 +5,15 @@ import random
 
 class Exploration:
     def __init__(self):
-        self.boltzmann_tau = 0.3
-        self.min_boltzmann = 0.3
-        self.boltzmann_decay = 0.99995
+        self.boltzmann_tau = 0.5
+        self.min_boltzmann = 0.5
+        self.boltzmann_decay = 0.995
 
     def decay(self):
         self.boltzmann_tau = self.min_boltzmann + self.boltzmann_decay*(self.boltzmann_tau - self.min_boltzmann)
 
 class DriverModel:
-    def __init__(self, grid, period, destination, estimator, exit_prob, exploration):
+    def __init__(self, grid, period, destination, estimator, exit_prob, exploration, use_tax=False):
         self.grid = grid
         self.estimator = estimator
         self.period = period
@@ -21,6 +21,7 @@ class DriverModel:
         self.exit_prob = exit_prob
         self.n_actions = N_CLUSTERS + 1
         self.exploration = exploration
+        self.use_tax = use_tax
 
         self.bellman_iterations = 15
 
@@ -48,6 +49,10 @@ class DriverModel:
 
             # cost of entering the queue
             expected_r = self.estimator.reward_estimates[self.destination][cluster]
+            if self.use_tax:
+                #expected_r = self.estimator.fare_estimates[cluster] - self.estimator.tax_estimates[cluster]
+                est_wl = self.estimator.queue_length_estimates[cluster] * self.estimator.waiting_time_estimates[cluster] * RESERVATION
+                expected_r = self.estimator.fare_estimates[cluster] - est_wl
             #expected_r = self.estimator.fare_estimates[self.destination][cluster] - self.estimator.controller.get_tax(cluster)
             expected_w = self.get_w_estimate(cluster)
             r[cluster][cluster] = expected_r - expected_w*RESERVATION  # this uses the fiction that travel costs are already handled.
@@ -93,6 +98,21 @@ class DriverModel:
         print(f"period: {self.period}")
         print(f"({cluster}) q_values: {q_values[cluster]}")
         print(f"({cluster}) v_values: {v_values}")
+        if self.use_tax:
+            with_taxes = []
+            taxes = []
+            fares = []
+            estimated_wl = []
+            for c in range(N_CLUSTERS):
+                with_taxes.append(round(self.estimator.fare_estimates[c] - self.estimator.tax_estimates[c],2))
+                taxes.append(round(self.estimator.tax_estimates[c],2))
+                fares.append(round(self.estimator.fare_estimates[c],2))
+                est_wl = self.estimator.queue_length_estimates[c] * self.estimator.waiting_time_estimates[c]
+                estimated_wl.append(est_wl*RESERVATION)
+            print(f"({cluster}) r_estimates(using taxes): {with_taxes}")
+            print(f"({cluster}) taxes: {taxes}")
+            print(f"({cluster}) fares: {fares}")
+            print(f"({cluster}) estimated wl: {estimated_wl}")
         print(f"({cluster}) incremental rewards: {self.incremental_rewards(t)[cluster]}")
         print(f"({cluster}) r_estimates: {[r_estimates[c] for c in range(N_CLUSTERS)]}")
         print(f"({cluster}) w_estimates: {[self.get_w_estimate(x) for x in range(N_CLUSTERS)]}")

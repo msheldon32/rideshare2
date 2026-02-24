@@ -10,7 +10,7 @@ class DriverModel:
         self.exit_prob = exit_prob
         self.n_locations = len(policy)
 
-    def decide(self, cluster):
+    def decide(self, cluster, t=None):
         print(f"({cluster}) deciding...")
         probs = self.policy[cluster]
         print(f"probs: {[float(x) for x in probs]}")
