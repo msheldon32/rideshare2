@@ -51,9 +51,6 @@ class Estimator:
         self._spawn_means = [[] for _ in range(self.n_locations)]
         self._service_means = [[] for _ in range(self.n_locations)]
         self._transition_means = [[[] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
-        self._reward_means = [[[] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
-        self._fare_means = [[] for _ in range(self.n_locations)]
-        self._tax_means = [[] for _ in range(self.n_locations)]
         self._subsidy_means = [[[[] for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
         self._w_means = [[] for _ in range(self.n_locations)]
         self._queue_means = [[] for _ in range(self.n_locations)]
@@ -62,12 +59,14 @@ class Estimator:
         self._prior_spawn = 1.0
         self._prior_service = 1.0
         self._prior_transition = 1.0 / self.n_locations
-        self._prior_reward = 10.0
-        self._prior_fare = 10.0
-        self._prior_tax = 0.0
         self._prior_subsidy = 0.0
         self._prior_w = 0.5
         self._prior_queue = 0.0
+
+        # --- Estimates updated on flush() ---
+        self.reward_estimates = [[10.0] * self.n_locations for _ in range(self.n_locations)]
+        self.fare_estimates = [10.0 for _ in range(self.n_locations)]
+        self.tax_estimates = [0.0 for _ in range(self.n_locations)]
 
     def clean_rewards(self, t):
         # no-op in mean estimator (no EWMA state to nudge)
@@ -155,24 +154,7 @@ class Estimator:
                         self._transition_means[i][j].append(counts[i][j] / row_totals[i])
             self._transition_buffer.clear()
 
-        # Reward
-        for origin in range(self.n_locations):
-            for loc in range(self.n_locations):
-                if self._reward_buffer[origin][loc]:
-                    self._reward_means[origin][loc].append(sum(self._reward_buffer[origin][loc]) / len(self._reward_buffer[origin][loc]))
-                    self._reward_buffer[origin][loc].clear()
-
-        # Fare
-        for loc in range(self.n_locations):
-            if self._fare_buffer[loc]:
-                self._fare_means[loc].append(sum(self._fare_buffer[loc]) / len(self._fare_buffer[loc]))
-                self._fare_buffer[loc].clear()
-
-        # Tax
-        for loc in range(self.n_locations):
-            if self._tax_buffer[loc]:
-                self._tax_means[loc].append(sum(self._tax_buffer[loc]) / len(self._tax_buffer[loc]))
-                self._tax_buffer[loc].clear()
+        # Reward, fare, and tax buffers are flushed in flush(), not here
 
         # Subsidy
         for origin in range(self.n_locations):
@@ -201,21 +183,40 @@ class Estimator:
     # ------------------------------------------------------------------
 
     def flush(self):
+        # Clear means buffers
         for loc in range(self.n_locations):
             self._spawn_means[loc].clear()
             self._service_means[loc].clear()
-            self._fare_means[loc].clear()
-            self._tax_means[loc].clear()
             self._w_means[loc].clear()
             self._queue_means[loc].clear()
         for i in range(self.n_locations):
             for j in range(self.n_locations):
                 self._transition_means[i][j].clear()
-                self._reward_means[i][j].clear()
         for origin in range(self.n_locations):
             for start in range(self.n_locations):
                 for end in range(self.n_locations):
                     self._subsidy_means[origin][start][end].clear()
+
+        # Rewards: use mean of observations since last flush, else keep last value
+        for origin in range(self.n_locations):
+            for loc in range(self.n_locations):
+                buf = self._reward_buffer[origin][loc]
+                if buf:
+                    self.reward_estimates[origin][loc] = sum(buf) / len(buf)
+                buf.clear()
+
+        # Fares: use mean of observations since last flush, else keep last value
+        for loc in range(self.n_locations):
+            buf = self._fare_buffer[loc]
+            if buf:
+                self.fare_estimates[loc] = sum(buf) / len(buf)
+            buf.clear()
+
+        # Taxes: use mean of observations since last flush, else default to 0
+        for loc in range(self.n_locations):
+            buf = self._tax_buffer[loc]
+            self.tax_estimates[loc] = sum(buf) / len(buf) if buf else 0.0
+            buf.clear()
 
     # ------------------------------------------------------------------
     # Accessors — compute mean of means buffers, fall back to prior
@@ -233,15 +234,6 @@ class Estimator:
             for i in range(self.n_locations)
         ]
 
-    def get_reward_estimates(self):
-        return [
-            [self._mean_or_prior(self._reward_means[i][j], self._prior_reward) for j in range(self.n_locations)]
-            for i in range(self.n_locations)
-        ]
-
-    def get_fare_estimates(self):
-        return [self._mean_or_prior(self._fare_means[i], self._prior_fare) for i in range(self.n_locations)]
-
     def get_arrival_rates(self):
         return [1.0 / s if s > 0 else 0.0 for s in self.get_inter_spawn_estimates()]
 
@@ -249,13 +241,29 @@ class Estimator:
         return [1.0 / s if s > 0 else 0.0 for s in self.get_inter_service_estimates()]
 
     def get_config(self, exit_prob):
+        transitions = self.get_transition_estimates()
+
+        adjusted_rewards = [[0.0] * self.n_locations for _ in range(self.n_locations)]
+        for _class in range(self.n_locations):
+            for origin in range(self.n_locations):
+                origin_return_cost = self.grid.get_travel_cost(origin, _class, self.period)
+                expected_dest_return_cost = sum(
+                    transitions[origin][dest] * self.grid.get_travel_cost(dest, _class, self.period)
+                    for dest in range(self.n_locations)
+                )
+                adjusted_rewards[_class][origin] = (
+                    self.reward_estimates[_class][origin]
+                    + origin_return_cost
+                    - expected_dest_return_cost
+                )
+
         return ModelConfig(
             grid=self.grid,
             period=self.period,
             arrival_rates=self.get_arrival_rates(),
             service_rates=self.get_service_rates(),
-            vehicle_rewards=self.get_reward_estimates(),
-            producer_rewards=self.get_fare_estimates(),
+            vehicle_rewards=adjusted_rewards,
+            producer_rewards=self.fare_estimates,
             exit_prob=exit_prob,
-            customer_transitions=self.get_transition_estimates()
+            customer_transitions=transitions
         )

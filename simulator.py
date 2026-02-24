@@ -203,7 +203,7 @@ class Simulator:
         fare = request.net_fare_cents / 100
 
         # estimator observations
-        self.estimators[self.get_period()].methodobserve_reward(driver_class, request.start_cluster, remuneration)
+        self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, remuneration)
         if self.swap_reward_fare:
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
         else:
@@ -405,7 +405,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "method"
+    controller_type = "fixed"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():
