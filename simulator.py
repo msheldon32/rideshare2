@@ -24,6 +24,8 @@ class Simulator:
         if seed is not None:
             random.seed(seed)
 
+        self.policy_update_window = 48
+
         self.requests = requests
         self.n_classes = n_classes
         self.n_clusters = n_clusters
@@ -354,7 +356,7 @@ class Simulator:
             self.last_ewma_update = self.t
 
         # recompute policies periodically
-        if self.t - self.last_policy_update >= 100:
+        if self.t - self.last_policy_update >= self.policy_update_window:
             self.update_policies()
 
         if event_type == "a":
@@ -412,7 +414,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "method"
+    controller_type = "baseline"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():
