@@ -36,6 +36,7 @@ class Simulator:
         self.grid = grid.Grid()
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
 
+        self.controller_type = controller_type
         self.rate_tracker = estimator_mean.RateTracker(n_clusters)
 
         if controller_type == "baseline":
@@ -53,10 +54,10 @@ class Simulator:
 
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
-
+        use_fare_tax = controller_type in ["method", "smoothed"]
 
         # one estimator per period
-        self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller) for period in range(n_periods)]
+        self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax) for period in range(n_periods)]
 
         self.ewma_timestep = ewma_timestep
         self.last_ewma_update = 0.0
@@ -405,7 +406,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "fixed"
+    controller_type = "baseline"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():
