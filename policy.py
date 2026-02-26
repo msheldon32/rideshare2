@@ -64,6 +64,81 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
     return [prob, total_arrival_rates, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate]
 
+def get_cvxpy_prob_agg_queue(model_config):
+    n_loc = len(model_config.locations)
+
+    arrivals_into_queue = cp.Variable((n_loc, n_loc), nonneg=True)
+    balk_rate = cp.Variable((n_loc, n_loc), nonneg=True)
+    flows_between_locations = [cp.Variable((n_loc, n_loc), nonneg=True) for k in range(n_loc)]
+    total_arrival_rates = cp.Variable(n_loc, nonneg=True)
+
+    vehicle_utilities = [[None for i in range(n_loc)] for k in range(n_loc)]
+    for k in range(n_loc):
+        for i in range(n_loc):
+            expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_prepaid_cost(k, i, j) for j in range(n_loc)])
+            vehicle_utilities[k][i] = expected_tt_difference + model_config.producer_rewards[i]
+
+    obj = 0
+    for k in range(n_loc):
+        for i in range(n_loc):
+            for j in range(n_loc):
+                travel_cost = model_config.get_prepaid_cost(k, i, j)
+                obj += travel_cost * flows_between_locations[k][i, j]
+
+    # aggregate queue length: E[L] = lambda / (mu - lambda) = mu * inv_pos(mu - lambda) - 1
+    for i in range(n_loc):
+        mu_i = model_config.service_rates[i]
+        obj += (mu_i * cp.inv_pos(mu_i - total_arrival_rates[i]) - 1) * model_config.reservation
+
+    for i in range(n_loc):
+        for k in range(n_loc):
+            obj -= vehicle_utilities[k][i] * arrivals_into_queue[k, i]
+
+    objective = cp.Minimize(obj)
+
+    constraints = []
+    for i in range(n_loc):
+        constraints.append(total_arrival_rates[i] == cp.sum(arrivals_into_queue[:, i]))
+    for k in range(n_loc):
+        for i in range(n_loc):
+            outside_arrival_rate = model_config.arrival_rates[i] if i == k else 0
+            vehicle_returns = (1 - model_config.exit_prob) * cp.sum([arrivals_into_queue[k, j] * model_config.customer_transitions[j][i] for j in range(n_loc)])
+            constraints.append(cp.sum(flows_between_locations[k][:, i]) - cp.sum(flows_between_locations[k][i, :]) + outside_arrival_rate + vehicle_returns == arrivals_into_queue[k, i] + balk_rate[k, i])
+
+    prob = cp.Problem(objective, constraints)
+    return [prob, total_arrival_rates, arrivals_into_queue, flows_between_locations, balk_rate]
+
+
+def get_policies_agg_queue(model_config):
+    prob, total_arrival_rates, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob_agg_queue(model_config)
+    try:
+        prob.solve(solver=cp.CLARABEL)
+        if prob.status not in ("optimal", "optimal_inaccurate"):
+            raise ValueError(f"CLARABEL status: {prob.status}")
+    except Exception as e:
+        print(f"CLARABEL failed ({e}), falling back to SCS")
+        prob.solve(solver=cp.SCS)
+
+    n_loc = len(model_config.locations)
+    policies = [[None for i in range(n_loc)] for k in range(n_loc)]
+    for k in range(n_loc):
+        for i in range(n_loc):
+            action_rates = [0.0] * (n_loc + 1)
+            action_rates[i] = arrivals_into_queue.value[k, i]
+            for j in range(n_loc):
+                if j != i:
+                    action_rates[j] = flows_between_locations[k].value[i, j]
+            action_rates[n_loc] = balk_rate.value[k, i]
+            total = sum(action_rates)
+            if total > 0:
+                policies[k][i] = [r / total for r in action_rates]
+            else:
+                policies[k][i] = [0.0] * (n_loc + 1)
+                policies[k][i][n_loc] = 1.0
+
+    return policies
+
+
 def get_policies(model_config, input_vehicle_rewards=None):
     prob, total_arrival_rates, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob(model_config, input_vehicle_rewards)
     try:

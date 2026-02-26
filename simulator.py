@@ -34,6 +34,8 @@ class Simulator:
 
         self.epoch = epoch
 
+        self.warmup_period = 3000
+
 
         self.grid = grid.Grid()
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
@@ -57,6 +59,7 @@ class Simulator:
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
         use_fare_tax = controller_type in ["method", "smoothed"]
+        self.use_agg_queue_policy = controller_type in ["method", "smoothed"]
 
         # one estimator per period
         self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax) for period in range(n_periods)]
@@ -124,7 +127,7 @@ class Simulator:
         print("done.")
 
     def update_policies(self):
-        tax_scale = min(1.0, self.t / 3000.0)
+        tax_scale = min(1.0, self.t / self.warmup_period)
         for est in self.estimators:
             est.tax_scale = tax_scale
 
@@ -136,7 +139,10 @@ class Simulator:
             print(f"service_rates: {config.service_rates}")
             print(f"vehicle_rewards: {config.vehicle_rewards}")
 
-            new_policies = policy.get_policies(config)
+            if self.use_agg_queue_policy:
+                new_policies = policy.get_policies_agg_queue(config)
+            else:
+                new_policies = policy.get_policies(config)
             for _class in range(self.n_classes):
                 self.models[period][_class] = model.DriverModel(new_policies[_class], self.exit_probs[period])
 
@@ -169,7 +175,7 @@ class Simulator:
             #new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
-        if not self.observer_reset and self.t >= 3000:
+        if not self.observer_reset and self.t >= self.warmup_period:
             self.observer.reset()
             self.observer_reset = True
             for est in self.estimators:
@@ -414,7 +420,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "baseline"
+    controller_type = "smoothed"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():

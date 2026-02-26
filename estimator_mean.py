@@ -38,6 +38,8 @@ class Estimator:
         self.tax_scale = 0.0
         self.time_window = 2
 
+        self.tax_alpha = 0.25
+
         # --- Observation buffers (raw events since last update_estimator call) ---
         self._spawn_buffer = [[] for _ in range(self.n_locations)]
         self._service_buffer = [[] for _ in range(self.n_locations)]
@@ -113,7 +115,7 @@ class Estimator:
         self._fare_buffer[location].append(fare)
 
     def observe_tax(self, origin, location, tax):
-        self._tax_buffer[location].append(tax)
+        self._tax_buffer[location].append(tax*self.tax_scale)
 
     def observe_subsidy(self, origin, start, end, subsidy):
         self._subsidy_buffer[origin][start][end].append(subsidy)
@@ -218,7 +220,7 @@ class Estimator:
         for loc in range(self.n_locations):
             buf = self._tax_buffer[loc]
             mean_val = sum(buf) / len(buf) if buf else 0.0
-            self.tax_estimates[loc] = 0.5 * self.tax_estimates[loc] + 0.5 * mean_val
+            self.tax_estimates[loc] = self.tax_alpha * self.tax_estimates[loc] + (1-self.tax_alpha) * mean_val
             self.tax_estimates[loc] = min(self.tax_estimates[loc], self.fare_estimates[loc])
             buf.clear()
 
@@ -251,7 +253,7 @@ class Estimator:
         for _class in range(self.n_locations):
             for origin in range(self.n_locations):
                 if self.use_fare_tax:
-                    base_reward = self.fare_estimates[origin] - self.tax_scale * self.tax_estimates[origin]
+                    base_reward = self.fare_estimates[origin] - self.tax_estimates[origin]#self.tax_scale * self.tax_estimates[origin]
                 else:
                     base_reward = self.reward_estimates[_class][origin]
                 origin_return_cost = self.grid.get_travel_cost(origin, _class, self.period)
