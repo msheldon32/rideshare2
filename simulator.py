@@ -20,11 +20,12 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, ewma_timestep=0.5):
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, ewma_timestep=0.5, policy_smoothing=0.5):
         if seed is not None:
             random.seed(seed)
 
         self.policy_update_window = 48
+        self.policy_smoothing = policy_smoothing
 
         self.requests = requests
         self.n_classes = n_classes
@@ -144,7 +145,13 @@ class Simulator:
             else:
                 new_policies = policy.get_policies(config)
             for _class in range(self.n_classes):
-                self.models[period][_class] = model.DriverModel(new_policies[_class], self.exit_probs[period])
+                old_policy = self.models[period][_class].policy
+                blended = [
+                    [(1 - self.policy_smoothing) * old_policy[i][a] + self.policy_smoothing * new_policies[_class][i][a]
+                     for a in range(len(old_policy[i]))]
+                    for i in range(self.n_clusters)
+                ]
+                self.models[period][_class] = model.DriverModel(blended, self.exit_probs[period])
 
         for est in self.estimators:
             est.flush()
