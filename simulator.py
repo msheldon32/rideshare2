@@ -20,7 +20,7 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, ewma_timestep=0.5, policy_smoothing=0.5):
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, ewma_timestep=0.5, policy_smoothing=0.2):
         if seed is not None:
             random.seed(seed)
 
@@ -35,7 +35,8 @@ class Simulator:
 
         self.epoch = epoch
 
-        self.warmup_period = 3000
+        self.warmup_period = 5000
+        self.tax_warmup = 1
 
 
         self.grid = grid.Grid()
@@ -60,7 +61,7 @@ class Simulator:
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
         use_fare_tax = controller_type in ["method", "smoothed"]
-        self.use_agg_queue_policy = controller_type in ["method", "smoothed"]
+        self.use_agg_queue_policy = False #controller_type in ["method", "smoothed"]
 
         # one estimator per period
         self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax) for period in range(n_periods)]
@@ -69,7 +70,7 @@ class Simulator:
         self.last_ewma_update = 0.0
 
         # default policy: always enter the queue at the current location
-        default_policy = [([0.0] * i + [1.0] + [0.0] * (n_clusters - i)) for i in range(n_clusters)]
+        default_policy = [([0.0] * i + [0.5] + [0.5] * (n_clusters - i)) for i in range(n_clusters)]
         self.models = [[model.DriverModel(default_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
         """self.exploration = [[model_alt.Exploration() for _class in range(n_classes)] for period in range(n_periods)]
@@ -101,7 +102,7 @@ class Simulator:
         max_t = 0
         print("building requests")
 
-        while max_t < 7300:
+        while max_t < 10000:
             req_event = self.requester.get_request_poisson(max_t)
             max_t = req_event[0]
             heapq.heappush(self.next_events, req_event)
@@ -128,7 +129,7 @@ class Simulator:
         print("done.")
 
     def update_policies(self):
-        tax_scale = min(1.0, self.t / self.warmup_period)
+        tax_scale = min(1.0, self.t / self.tax_warmup)
         for est in self.estimators:
             est.tax_scale = tax_scale
 
@@ -427,7 +428,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "smoothed"
+    controller_type = "method"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():
