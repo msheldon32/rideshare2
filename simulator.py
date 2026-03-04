@@ -92,7 +92,7 @@ class Simulator:
         self.last_policy_update = 0
 
         self.spawner = spawner.Spawner(epoch)
-        self.requester = requester.Requester(epoch)
+        self.requester = requester.Requester(self.grid, epoch)
         self.observer = observer.Observer()
         self.observer_reset = False
 

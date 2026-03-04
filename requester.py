@@ -5,7 +5,8 @@ import csv
 from util import *
 
 class Requester:
-    def __init__(self, epoch):
+    def __init__(self, grid, epoch):
+        self.grid = grid
         self.epoch_hour = epoch.hour
         self.rates = [[0.0 for _ in range(N_CLUSTERS)] for _ in range(N_PERIODS)]
         self.total_period_rates = [0.0 for _ in range(N_PERIODS)]
@@ -73,7 +74,7 @@ class Requester:
         fare_key = (period, start_cluster)
         net_fare = self._net_rewards.get(fare_key, 1000)
         gross_fare = self._gross_rewards.get(fare_key, 1500)
-        travel_time = 0.5
+        travel_time = self.grid.get_travel_time(start_cluster, end_cluster, period)#0.5
 
         req = Request(end_t, start_cluster, end_cluster, period, net_fare, gross_fare, travel_time)
         return (end_t, "r", req)
