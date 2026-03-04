@@ -1,4 +1,64 @@
-import cvxpy as cp 
+import cvxpy as cp
+import numpy as np
+
+
+def estimate_total_reward(model_config, policies):
+    """Compute estimated steady-state total reward rate given a model config and policies.
+
+    Solves the per-class flow balance equations to get steady-state vehicle
+    flows, then computes: vehicle rewards - relocation costs - waiting costs.
+    """
+    n_loc = len(model_config.locations)
+
+    # Steady-state flow v[k][i]: rate of class-k vehicles arriving at location i
+    flows = []
+    for k in range(n_loc):
+        A = np.zeros((n_loc, n_loc))
+        b = np.zeros(n_loc)
+        b[k] = model_config.arrival_rates[k]
+
+        for j in range(n_loc):
+            p_queue_j = policies[k][j][j]
+            for i in range(n_loc):
+                if i != j:
+                    A[i, j] += policies[k][j][i]  # relocation j -> i
+                A[i, j] += (1 - model_config.exit_prob) * p_queue_j * model_config.customer_transitions[j][i]  # post-service return
+
+        try:
+            v = np.linalg.solve(np.eye(n_loc) - A, b)
+            v = np.maximum(v, 0)
+        except np.linalg.LinAlgError:
+            v = np.zeros(n_loc)
+        flows.append(v)
+
+    # Total arrival rate at each queue
+    lambda_i = np.zeros(n_loc)
+    for k in range(n_loc):
+        for i in range(n_loc):
+            lambda_i[i] += flows[k][i] * policies[k][i][i]
+
+    total_reward = 0.0
+
+    # Vehicle rewards minus relocation costs
+    for k in range(n_loc):
+        for i in range(n_loc):
+            v_ki = flows[k][i]
+            arrivals = v_ki * policies[k][i][i]
+            total_reward += arrivals * model_config.producer_rewards[k][i]
+            for j in range(n_loc):
+                if j != i and j < n_loc and policies[k][i][j] > 0:
+                    total_reward -= v_ki * policies[k][i][j] * model_config.get_prepaid_cost(k, i, j)
+
+    # Waiting costs: reservation * E[L_i] = reservation * lambda / (mu - lambda)
+    for i in range(n_loc):
+        mu_i = model_config.service_rates[i]
+        lam_i = lambda_i[i]
+        if 0 < lam_i < mu_i:
+            total_reward -= model_config.reservation * lam_i / (mu_i - lam_i)
+
+    return total_reward
+
+
 
 def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     if input_vehicle_rewards is None:

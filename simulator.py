@@ -147,6 +147,10 @@ class Simulator:
                 new_policies = policy.get_policies_agg_queue(config)
             else:
                 new_policies = policy.get_policies(config)
+
+            est_reward = policy.estimate_total_reward(config, new_policies)
+            print(f"estimated total reward rate: {est_reward:.4f}")
+
             for _class in range(self.n_classes):
                 old_policy = self.models[period][_class].policy
                 blended = [
