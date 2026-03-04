@@ -21,8 +21,16 @@ class ModelConfig:
         if i == j:
             return 0
         return self.grid.get_prepaid_cost(k, i, j, self.period)
+    
+    def get_potential_change(self, k, i, j):
+        if i == j:
+            return 0
+        return self.grid.get_potential_change(k, i, j, self.period)
 
     def cost_to(self, i, j):
         if i == j:
             return 0
         return self.grid.get_travel_cost(i, j, self.period)
+
+    def get_rebalance_cost(self, k, i, j):
+        return self.cost_to(i,j) + self.get_potential_change(k,i,j)

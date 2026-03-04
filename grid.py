@@ -30,11 +30,16 @@ class Grid:
     def get_travel_cost(self,start, end, period):
         return self.costs[period][start][end]
     
-    def get_rebalance_cost(self, start, end, period):
-        if start == end:
-            return 0
-
-        return self.costs[period][start][end]
-    
     def get_prepaid_cost(self, _class, start, end, period):
         return self.costs[period][start][end] + self.costs[period][end][_class] - self.costs[period][start][_class]
+    
+    def get_potential_change(self, _class, start, end, period):
+        start_cost = 0
+        if start != _class:
+            start_cost = self.costs[period][start][_class]
+
+        end_cost = 0
+        if end != _class:
+            end_cost = self.costs[period][end][_class]
+
+        return end_cost - start_cost

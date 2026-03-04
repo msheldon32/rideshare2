@@ -45,13 +45,13 @@ def estimate_total_reward(model_config, policies):
             v_ki = flows[k][i]
             arrivals = v_ki * policies[k][i][i]
             expected_prepaid = sum(
-                model_config.customer_transitions[i][j] * model_config.get_prepaid_cost(k, i, j)
+                model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j)
                 for j in range(n_loc)
             )
             total_reward += arrivals * (model_config.producer_rewards[k][i] - expected_prepaid)
             for j in range(n_loc):
                 if j != i and j < n_loc and policies[k][i][j] > 0:
-                    total_reward -= v_ki * policies[k][i][j] * model_config.get_prepaid_cost(k, i, j)
+                    total_reward -= v_ki * policies[k][i][j] * model_config.get_rebalance_cost(k, i, j)
 
     # Waiting costs: reservation * E[L_i] = reservation * lambda / (mu - lambda)
     for i in range(n_loc):
@@ -88,7 +88,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
     for k in range(n_loc):
         for i in range(n_loc):
-            expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_prepaid_cost(k, i, j) for j in range(n_loc)])
+            expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
             vehicle_utilities[k][i] = (expected_tt_difference + vehicle_rewards[k][i])
 
     # objective function: minimize the travel time multiplied by the flow minus the log of (service rate - total arrival rate across all origins)
@@ -96,7 +96,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     for k in range(n_loc):
         for i in range(n_loc):
             for j in range(n_loc):
-                travel_cost = model_config.get_prepaid_cost(k, i, j)
+                travel_cost = model_config.get_rebalance_cost(k, i, j)
                 obj += travel_cost * flows_between_locations[k][i,j]
 
     for i in range(n_loc):
@@ -139,14 +139,14 @@ def get_cvxpy_prob_agg_queue(model_config):
     vehicle_utilities = [[None for i in range(n_loc)] for k in range(n_loc)]
     for k in range(n_loc):
         for i in range(n_loc):
-            expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_prepaid_cost(k, i, j) for j in range(n_loc)])
+            expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
             vehicle_utilities[k][i] = expected_tt_difference + model_config.producer_rewards[k][i]
 
     obj = 0
     for k in range(n_loc):
         for i in range(n_loc):
             for j in range(n_loc):
-                travel_cost = model_config.get_prepaid_cost(k, i, j)
+                travel_cost = model_config.get_rebalance_cost(k, i, j)
                 obj += travel_cost * flows_between_locations[k][i, j]
 
     # aggregate queue length: E[L] = lambda / (mu - lambda) = mu * inv_pos(mu - lambda) - 1

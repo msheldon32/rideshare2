@@ -60,7 +60,7 @@ class Simulator:
 
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
-        use_fare_tax = controller_type in ["method", "smoothed"]
+        use_fare_tax = controller_type in ["method", "smoothed", "baseline"]
         self.use_agg_queue_policy = False#controller_type in ["method", "smoothed"]
 
         # one estimator per period
@@ -448,7 +448,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "method"
+    controller_type = "baseline"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():
