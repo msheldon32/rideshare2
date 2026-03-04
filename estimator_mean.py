@@ -21,6 +21,7 @@ class RateTracker:
     def flush(self, t):
         self.last_spawn_time = [t for _ in range(self.n_locations)]
         self.last_service_time = [t for _ in range(self.n_locations)]
+        self.last_arrival_time = [t for _ in range(self.n_locations)]
         for loc in range(self.n_locations):
             self.services[loc].clear()
         self.last_arrival_time_in_period = [[float("inf") for _ in range(self.n_locations)] for _ in range(N_PERIODS)]
@@ -38,7 +39,7 @@ class Estimator:
         self.tax_scale = 0.0
         self.time_window = 2
 
-        self.tax_alpha = 0.2
+        self.tax_alpha = 0.8
 
         # --- Observation buffers (raw events since last update_estimator call) ---
         self._spawn_buffer = [[] for _ in range(self.n_locations)]
@@ -48,12 +49,14 @@ class Estimator:
         self._fare_buffer = [[] for _ in range(self.n_locations)]
         self._tax_buffer = [[] for _ in range(self.n_locations)]
         self._subsidy_buffer = [[[[] for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
+        self._arrival_buffer = [[] for _ in range(self.n_locations)]
         self._w_buffer = [[] for _ in range(self.n_locations)]
         self._queue_buffer = [[] for _ in range(self.n_locations)]
 
         # --- Means buffers (one entry per update_estimator call) ---
         self._spawn_means = [[] for _ in range(self.n_locations)]
         self._service_means = [[] for _ in range(self.n_locations)]
+        self._arrival_means = [[] for _ in range(self.n_locations)]
         self._transition_means = [[[] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
         self._subsidy_means = [[[[] for _ in range(self.n_locations)] for _ in range(self.n_locations)] for _ in range(self.n_locations)]
         self._w_means = [[] for _ in range(self.n_locations)]
@@ -62,6 +65,7 @@ class Estimator:
         # --- Priors (used when means buffers are empty) ---
         self._prior_spawn = 1.0
         self._prior_service = 1.0
+        self._prior_arrival = 1.0
         self._prior_transition = 1.0 / self.n_locations
         self._prior_subsidy = 0.0
         self._prior_w = 0.5
@@ -96,6 +100,8 @@ class Estimator:
         self.rate_tracker.last_spawn_time[location] = t
 
     def observe_arrival(self, location, _class, t):
+        inter_arrival = t - self.rate_tracker.last_arrival_time[location]
+        self._arrival_buffer[location].append(inter_arrival)
         self.rate_tracker.last_arrival_time[location] = t
         self.rate_tracker.last_arrival_time_in_period[self.period][location] = t
 
@@ -145,6 +151,12 @@ class Estimator:
                 self._service_means[loc].append(sum(self._service_buffer[loc]) / len(self._service_buffer[loc]))
                 self._service_buffer[loc].clear()
 
+        # Queue arrivals
+        for loc in range(self.n_locations):
+            if self._arrival_buffer[loc]:
+                self._arrival_means[loc].append(sum(self._arrival_buffer[loc]) / len(self._arrival_buffer[loc]))
+                self._arrival_buffer[loc].clear()
+
         # Transition
         if self._transition_buffer:
             counts = [[0] * self.n_locations for _ in range(self.n_locations)]
@@ -191,6 +203,7 @@ class Estimator:
         for loc in range(self.n_locations):
             self._spawn_means[loc].clear()
             self._service_means[loc].clear()
+            self._arrival_means[loc].clear()
             self._w_means[loc].clear()
             self._queue_means[loc].clear()
         for i in range(self.n_locations):
@@ -239,6 +252,10 @@ class Estimator:
             [self._mean_or_prior(self._transition_means[i][j], self._prior_transition) for j in range(self.n_locations)]
             for i in range(self.n_locations)
         ]
+
+    def get_queue_arrival_rates(self):
+        inter_arrivals = [self._mean_or_prior(self._arrival_means[i], self._prior_arrival) for i in range(self.n_locations)]
+        return [1.0 / s if s > 0 else 0.0 for s in inter_arrivals]
 
     def get_arrival_rates(self):
         return [1.0 / s if s > 0 else 0.0 for s in self.get_inter_spawn_estimates()]

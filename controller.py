@@ -54,7 +54,7 @@ class MethodController:
         self.grid = grid
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
-        self.beta = 0.95
+        self.beta = 0
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
@@ -78,6 +78,14 @@ class MethodController:
         if self.last_event_type[cluster] == "arrival":
             Qminus = self.last_length[cluster]
             tax = ((time-self.last_t[cluster]) * (Qminus**2))
+
+            print("---------------------------------------------------")
+            print(f"applying tax of {tax}")
+            print(f"cluster: {cluster}")
+            print(f"Qminus: {Qminus}")
+            print(f"previous tax: {self.last_tax[cluster]}")
+            print(f"last event was an arrival at {self.last_t[cluster]}, new event is at {time}")
+            print("---------------------------------------------------")
 
             if time - self.last_t[cluster] > 2:
                 # just skip
@@ -141,12 +149,14 @@ class SmoothedController:
             Qminus = self.last_length[cluster]
             Qsquared_est = (Qminus - self.q_estimate[cluster])**2 + (self.q_estimate[cluster])**2
             tax = (time-self.last_t[cluster]) * Qsquared_est
+            print("---------------------------------------------------")
             print(f"applying tax of {tax}")
             print(f"cluster: {cluster}")
             print(f"q estimate: {self.q_estimate[cluster]}")
             print(f"Qsquared_est: {Qsquared_est}")
             print(f"Qminus: {Qminus}")
             print(f"last event was an arrival at {self.last_t[cluster]}, new event is at {time}")
+            print("---------------------------------------------------")
             #input("continue")
 
             if time - self.last_t[cluster] > 2:

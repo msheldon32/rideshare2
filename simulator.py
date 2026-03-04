@@ -24,7 +24,7 @@ class Simulator:
         if seed is not None:
             random.seed(seed)
 
-        self.policy_update_window = 48
+        self.policy_update_window = 96 
         self.policy_smoothing = policy_smoothing
 
         self.requests = requests
@@ -61,7 +61,7 @@ class Simulator:
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
         use_fare_tax = controller_type in ["method", "smoothed"]
-        self.use_agg_queue_policy = False #controller_type in ["method", "smoothed"]
+        self.use_agg_queue_policy = False#controller_type in ["method", "smoothed"]
 
         # one estimator per period
         self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax) for period in range(n_periods)]
@@ -70,7 +70,9 @@ class Simulator:
         self.last_ewma_update = 0.0
 
         # default policy: always enter the queue at the current location
-        default_policy = [([0.0] * i + [0.5] + [0.5] * (n_clusters - i)) for i in range(n_clusters)]
+        default_policy = [([0.0] * i + [0] + [0] * (n_clusters - i)) for i in range(n_clusters)]
+        for i in range(n_clusters):
+            default_policy[i][-1] = 1.0
         self.models = [[model.DriverModel(default_policy, exit_probs[period]) for _class in range(n_classes)] for period in range(n_periods)]
 
         """self.exploration = [[model_alt.Exploration() for _class in range(n_classes)] for period in range(n_periods)]
@@ -220,6 +222,20 @@ class Simulator:
         self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
 
         self.clean_queue(request.start_cluster, request.time)
+
+        if False: 
+            print("-------------------")
+            print(f"n_drivers: {n_drivers}")
+            print(f"tax: {self.controller.last_tax[request.start_cluster]*RESERVATION}")
+            #est_tax = self.estimators[request.period].waiting_time_estimates[request.start_cluster]*self.estimators[request.period].queue_length_estimates[request.start_cluster]*RESERVATION
+            arrival_rate = self.estimators[request.period].get_queue_arrival_rates()[request.start_cluster]
+            service_rate = self.estimators[request.period].get_service_rates()[request.start_cluster]
+            if service_rate == arrival_rate:
+                est_tax = 0
+            else:
+                est_tax = RESERVATION*(arrival_rate/((service_rate-arrival_rate)**2))
+            print(f"est_tax: {est_tax},  est arrival: {arrival_rate}, service: {service_rate}")
+            print("-------------------")
 
         remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.gross_fare_cents, request.net_fare_cents, n_drivers, request.time, waiting_time)
 
@@ -430,7 +446,7 @@ if __name__ == "__main__":
 
     controller_type = "method"
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=0, controller_type=controller_type, alpha=0)
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
