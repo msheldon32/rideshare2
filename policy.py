@@ -44,7 +44,11 @@ def estimate_total_reward(model_config, policies):
         for i in range(n_loc):
             v_ki = flows[k][i]
             arrivals = v_ki * policies[k][i][i]
-            total_reward += arrivals * model_config.producer_rewards[k][i]
+            expected_prepaid = sum(
+                model_config.customer_transitions[i][j] * model_config.get_prepaid_cost(k, i, j)
+                for j in range(n_loc)
+            )
+            total_reward += arrivals * (model_config.producer_rewards[k][i] - expected_prepaid)
             for j in range(n_loc):
                 if j != i and j < n_loc and policies[k][i][j] > 0:
                     total_reward -= v_ki * policies[k][i][j] * model_config.get_prepaid_cost(k, i, j)

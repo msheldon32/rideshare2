@@ -270,18 +270,11 @@ class Estimator:
         adjusted_producer_rewards = [[0.0] * self.n_locations for _ in range(self.n_locations)]
         for _class in range(self.n_locations):
             for origin in range(self.n_locations):
-                origin_return_cost = self.grid.get_travel_cost(origin, _class, self.period)
-                expected_dest_return_cost = sum(
-                    transitions[origin][dest] * self.grid.get_travel_cost(dest, _class, self.period)
-                    for dest in range(self.n_locations)
-                )
-                adjustment = origin_return_cost - expected_dest_return_cost
                 if self.use_fare_tax:
-                    base_reward = self.fare_estimates[origin] - self.tax_estimates[origin]
+                    adjusted_rewards[_class][origin] = self.fare_estimates[origin] - self.tax_estimates[origin]
                 else:
-                    base_reward = self.reward_estimates[_class][origin]
-                adjusted_rewards[_class][origin] = base_reward + adjustment
-                adjusted_producer_rewards[_class][origin] = self.fare_estimates[origin] + adjustment
+                    adjusted_rewards[_class][origin] = self.reward_estimates[_class][origin]
+                adjusted_producer_rewards[_class][origin] = self.fare_estimates[origin]
 
         return ModelConfig(
             grid=self.grid,

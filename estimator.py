@@ -198,16 +198,7 @@ class Estimator:
         adjusted_rewards = [[0.0] * self.n_locations for _ in range(self.n_locations)]
         for _class in range(self.n_locations):
             for origin in range(self.n_locations):
-                origin_return_cost = self.grid.get_travel_cost(origin, _class, self.period)
-                expected_dest_return_cost = sum(
-                    self.transition_estimates[origin][dest] * self.grid.get_travel_cost(dest, _class, self.period)
-                    for dest in range(self.n_locations)
-                )
-                adjusted_rewards[_class][origin] = (
-                    self.reward_estimates[_class][origin]
-                    + origin_return_cost
-                    - expected_dest_return_cost
-                )
+                adjusted_rewards[_class][origin] = self.reward_estimates[_class][origin]
 
         return ModelConfig(
             grid=self.grid,
