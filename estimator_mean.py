@@ -229,7 +229,7 @@ class Estimator:
                 self.fare_estimates[loc] = sum(buf) / len(buf)
             buf.clear()
 
-        # Taxes: EWMA with beta=0.5, default to 0 if no observations; capped at -2*fare
+        # Taxes: EWMA with beta=0.5, default to 0 if no observations; capped at -fare
         for loc in range(self.n_locations):
             buf = self._tax_buffer[loc]
             mean_val = sum(buf) / len(buf) if buf else 0.0
@@ -267,22 +267,21 @@ class Estimator:
         transitions = self.get_transition_estimates()
 
         adjusted_rewards = [[0.0] * self.n_locations for _ in range(self.n_locations)]
+        adjusted_producer_rewards = [[0.0] * self.n_locations for _ in range(self.n_locations)]
         for _class in range(self.n_locations):
             for origin in range(self.n_locations):
-                if self.use_fare_tax:
-                    base_reward = self.fare_estimates[origin] - self.tax_estimates[origin]#self.tax_scale * self.tax_estimates[origin]
-                else:
-                    base_reward = self.reward_estimates[_class][origin]
                 origin_return_cost = self.grid.get_travel_cost(origin, _class, self.period)
                 expected_dest_return_cost = sum(
                     transitions[origin][dest] * self.grid.get_travel_cost(dest, _class, self.period)
                     for dest in range(self.n_locations)
                 )
-                adjusted_rewards[_class][origin] = (
-                    base_reward
-                    + origin_return_cost
-                    - expected_dest_return_cost
-                )
+                adjustment = origin_return_cost - expected_dest_return_cost
+                if self.use_fare_tax:
+                    base_reward = self.fare_estimates[origin] - self.tax_estimates[origin]
+                else:
+                    base_reward = self.reward_estimates[_class][origin]
+                adjusted_rewards[_class][origin] = base_reward + adjustment
+                adjusted_producer_rewards[_class][origin] = self.fare_estimates[origin] + adjustment
 
         return ModelConfig(
             grid=self.grid,
@@ -290,7 +289,7 @@ class Estimator:
             arrival_rates=self.get_arrival_rates(),
             service_rates=self.get_service_rates(),
             vehicle_rewards=adjusted_rewards,
-            producer_rewards=self.fare_estimates,
+            producer_rewards=adjusted_producer_rewards,
             exit_prob=exit_prob,
             customer_transitions=transitions
         )

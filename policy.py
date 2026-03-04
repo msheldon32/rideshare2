@@ -76,7 +76,7 @@ def get_cvxpy_prob_agg_queue(model_config):
     for k in range(n_loc):
         for i in range(n_loc):
             expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_prepaid_cost(k, i, j) for j in range(n_loc)])
-            vehicle_utilities[k][i] = expected_tt_difference + model_config.producer_rewards[i]
+            vehicle_utilities[k][i] = expected_tt_difference + model_config.producer_rewards[k][i]
 
     obj = 0
     for k in range(n_loc):
