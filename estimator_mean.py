@@ -234,7 +234,7 @@ class Estimator:
             buf = self._tax_buffer[loc]
             mean_val = sum(buf) / len(buf) if buf else 0.0
             self.tax_estimates[loc] = self.tax_alpha * self.tax_estimates[loc] + (1-self.tax_alpha) * mean_val
-            self.tax_estimates[loc] = min(self.tax_estimates[loc], self.fare_estimates[loc])
+            #self.tax_estimates[loc] = min(self.tax_estimates[loc], self.fare_estimates[loc])
             buf.clear()
 
     # ------------------------------------------------------------------

@@ -24,7 +24,7 @@ class Simulator:
         if seed is not None:
             random.seed(seed)
 
-        self.policy_update_window = 96 
+        self.policy_update_window = 48 
         self.policy_smoothing = policy_smoothing
 
         self.requests = requests
@@ -448,7 +448,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "baseline"
+    controller_type = "smoothed"
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0)
     while not simulator.is_stopped():
