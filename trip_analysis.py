@@ -5,7 +5,9 @@ from util import *
 tc_baseline = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
 tc_sim = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
 
-with open("data/trip_counts_baseline.csv") as f:
+warmup = 2000 
+
+with open(f"data/trip_counts_baseline_w{warmup}.csv") as f:
     reader = csv.reader(f)
     next(reader)
 

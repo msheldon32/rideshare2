@@ -20,7 +20,8 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, ewma_timestep=0.5, policy_smoothing=0.2):
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, ewma_timestep=0.5, policy_smoothing=0.2,
+                 use_empirical=False):
         if seed is not None:
             random.seed(seed)
 
@@ -35,7 +36,7 @@ class Simulator:
 
         self.epoch = epoch
 
-        self.warmup_period = 5000
+        self.warmup_period = 2000 
         self.tax_warmup = 1
 
 
@@ -96,35 +97,38 @@ class Simulator:
         self.observer = observer.Observer()
         self.observer_reset = False
 
-        self.next_events = []#(0, "r", self.requests[0])]
+        self.use_empirical = use_empirical
+        self.next_events = []
         self.next_req = 1
 
         self.epoch_hour = self.epoch.hour
 
-        max_t = 0
         print("building requests")
-
-        while max_t < 10000:
-            req_event = self.requester.get_request_poisson(max_t)
-            max_t = req_event[0]
-            heapq.heappush(self.next_events, req_event)
+        if use_empirical:
+            for req in self.requests:
+                heapq.heappush(self.next_events, (req.time, "r", req))
+            max_t = max(req.time for req in self.requests) if self.requests else 0
+        else:
+            max_t = 0
+            while max_t < 10000:
+                req_event = self.requester.get_request_poisson(max_t)
+                max_t = req_event[0]
+                heapq.heappush(self.next_events, req_event)
         self.max_t = max_t
 
-        #for req in self.requests:
-        #    max_t = max(max_t, req.time)
-        #    heapq.heappush(self.next_events, (req.time, "r", req))
-
-        #for spawn in self.spawner.spawn_events:
-        #    # add Gaussian (-0.5, 1.0) noise to the spawn time
-        #    new_t = spawn[0] + random.gauss(-0.5, 1.0)
-        #    spawn = (new_t, spawn[1], spawn[2])
-        #    heapq.heappush(self.next_events, self.spawner.get_spawn_event(spawn))
-        spawn_t = 0
         print("building spawns")
-        while spawn_t < max_t:
-            spawn = self.spawner.get_spawn_poisson(spawn_t)
-            spawn_t = spawn[0]
-            heapq.heappush(self.next_events, spawn)
+        if use_empirical:
+            while True:
+                spawn = self.spawner.get_spawn_data(0)
+                if spawn[0] >= 1e9:
+                    break
+                heapq.heappush(self.next_events, spawn)
+        else:
+            spawn_t = 0
+            while spawn_t < max_t:
+                spawn = self.spawner.get_spawn_poisson(spawn_t)
+                spawn_t = spawn[0]
+                heapq.heappush(self.next_events, spawn)
         print("done.")
         print("computing initial WE policy from default estimator values...")
         self.update_policies()
@@ -449,8 +453,9 @@ if __name__ == "__main__":
     input("continue")
 
     controller_type = "smoothed"
+    use_empirical = True 
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0)
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer

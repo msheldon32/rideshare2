@@ -55,13 +55,13 @@ class MethodController:
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
         self.beta = 0.0
-        self.floor = -10
+        self.ceiling = 20
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
-        total_opt = max((fare/100) - self.last_tax[start_cluster]*RESERVATION, self.floor)
+        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
         #total_opt = min(max(total_opt, profit_max), fare/100)
@@ -79,6 +79,7 @@ class MethodController:
         if self.last_event_type[cluster] == "arrival":
             Qminus = self.last_length[cluster]
             tax = ((time-self.last_t[cluster]) * (Qminus**2))
+            tax = min(tax, self.ceiling/RESERVATION)
 
             print("---------------------------------------------------")
             print(f"applying tax of {tax}")
@@ -128,11 +129,11 @@ class SmoothedController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-        self.floor = -10
+        self.ceiling = 20
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         #tax = self.tax_buffers[start_cluster][-1]
-        tax = max(self.tax_buffers[start_cluster].pop(0), self.floor)
+        tax = self.tax_buffers[start_cluster].pop(0)
         total_opt = (fare/100) - tax*RESERVATION
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
@@ -154,6 +155,7 @@ class SmoothedController:
             self.q_estimate[cluster] = (1-self.beta)*self.last_length[cluster] + self.beta*self.q_estimate[cluster]
             Qsquared_est = (Qminus - self.q_estimate[cluster])**2 + (self.q_estimate[cluster])**2
             tax = (time-self.last_t[cluster]) * Qsquared_est
+            tax = min(tax, self.ceiling/RESERVATION)
             print("---------------------------------------------------")
             print(f"applying tax of {tax}")
             print(f"cluster: {cluster}")
