@@ -245,13 +245,15 @@ class Simulator:
             print(f"est_tax: {est_tax},  est arrival: {arrival_rate}, service: {service_rate}")
             print("-------------------")
 
+        # pm: class specific reward interpreted on a sliding scale based on alpha
         remuneration, tr, pm = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.gross_fare_cents, request.net_fare_cents, n_drivers, request.time, waiting_time)
 
         fare = request.net_fare_cents / 100
 
         # estimator observations
-        self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, remuneration)
+        self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, pm)
         if self.swap_reward_fare:
+            # need to swap these since for the fixed controller we're using a global fare adjustment
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
         else:
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
