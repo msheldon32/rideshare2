@@ -245,7 +245,7 @@ class Simulator:
             print(f"est_tax: {est_tax},  est arrival: {arrival_rate}, service: {service_rate}")
             print("-------------------")
 
-        remuneration = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.gross_fare_cents, request.net_fare_cents, n_drivers, request.time, waiting_time)
+        remuneration, tr, pm = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.gross_fare_cents, request.net_fare_cents, n_drivers, request.time, waiting_time)
 
         fare = request.net_fare_cents / 100
 
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "method"
+    controller_type = "baseline"
     use_empirical = True 
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical)

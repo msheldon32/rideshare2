@@ -9,7 +9,7 @@ class Controller:
         #if (fare/100) > 100:
         #    print(f"fare: {fare/100}")
         #    raise Exception("stop, invalid fare.")
-        return fare/100
+        return fare/100, fare/100, fare/100
 
     def get_subsidy(self, period, _class, start, end):
         return 0
@@ -33,7 +33,8 @@ class FixedController:
         #    print(f"fare: {fare/100}")
         #    raise Exception("stop, invalid fare.")
         #return (1-self.ptg)*(fare/100)
-        return (fare/100) - ((self.ptg)*(gross_fare/100))
+        remun = (fare/100) - ((self.ptg)*(gross_fare/100))
+        return remun, remun, remun
 
     def get_subsidy(self, period, _class, start, end):
         return 0
@@ -66,7 +67,7 @@ class MethodController:
 
         #total_opt = min(max(total_opt, profit_max), fare/100)
 
-        return (1-self.alpha)*total_opt + self.alpha*profit_max
+        return (1-self.alpha)*total_opt + self.alpha*profit_max, total_opt, profit_max
 
     def get_subsidy(self, period, _class, start, end):
         return self.alpha * self.grid.get_prepaid_cost(_class, start, end, period)
@@ -139,7 +140,7 @@ class SmoothedController:
 
         #total_opt = min(max(total_opt, profit_max), fare/100)
 
-        return (1-self.alpha)*total_opt + self.alpha*profit_max
+        return (1-self.alpha)*total_opt + self.alpha*profit_max, total_opt, profit_max
 
     def get_subsidy(self, period, _class, start, end):
         return self.alpha * self.grid.get_prepaid_cost(_class, start, end, period)
