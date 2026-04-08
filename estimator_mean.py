@@ -28,7 +28,7 @@ class RateTracker:
 
 
 class Estimator:
-    def __init__(self, rate_tracker, grid, period, controller, use_fare_tax=False):
+    def __init__(self, rate_tracker, grid, period, controller, use_fare_tax=False, alpha=0):
         self.rate_tracker = rate_tracker
         self.grid = grid
         self.period = period
@@ -40,6 +40,8 @@ class Estimator:
         self.time_window = 2
 
         self.tax_alpha = 0.9
+
+        self.alpha=alpha
 
         # --- Observation buffers (raw events since last update_estimator call) ---
         self._spawn_buffer = [[] for _ in range(self.n_locations)]
@@ -271,7 +273,10 @@ class Estimator:
         for _class in range(self.n_locations):
             for origin in range(self.n_locations):
                 if self.use_fare_tax:
-                    adjusted_rewards[_class][origin] = self.fare_estimates[origin] - self.tax_estimates[origin]
+                    #adjusted_rewards[_class][origin] = self.fare_estimates[origin] - self.tax_estimates[origin]
+                    reward_est = self.fare_estimates[origin] - self.tax_estimates[origin]
+                    other_est = self.reward_estimates[_class][origin]
+                    adjusted_rewards[_class][origin] = (1-self.alpha)*reward_est + self.alpha*other_est
                 else:
                     adjusted_rewards[_class][origin] = self.reward_estimates[_class][origin]
                 adjusted_producer_rewards[_class][origin] = self.fare_estimates[origin]

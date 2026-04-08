@@ -62,11 +62,11 @@ class Simulator:
 
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
-        use_fare_tax = controller_type in ["method", "smoothed", "baseline", "fixed"]
+        use_fare_tax = True#controller_type in ["method", "smoothed", "baseline", "fixed"]
         self.use_agg_queue_policy = False#controller_type in ["method", "smoothed"]
 
         # one estimator per period
-        self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax) for period in range(n_periods)]
+        self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
 
         self.ewma_timestep = ewma_timestep
         self.last_ewma_update = 0.0
