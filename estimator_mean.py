@@ -39,7 +39,7 @@ class Estimator:
         self.tax_scale = 0.0
         self.time_window = 2
 
-        self.tax_alpha = 0.8
+        self.tax_alpha = 0.9
 
         # --- Observation buffers (raw events since last update_estimator call) ---
         self._spawn_buffer = [[] for _ in range(self.n_locations)]

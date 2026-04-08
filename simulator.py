@@ -20,8 +20,9 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, ewma_timestep=0.5, policy_smoothing=0.2,
+                 controller_type="smoothed", alpha=0, ptg=0.3, seed=None, ewma_timestep=0.5, policy_smoothing=0.1,
                  use_empirical=False):
+        input("to do: have custom fare adjustments for different values of alpha")
         if seed is not None:
             random.seed(seed)
 
@@ -255,6 +256,8 @@ class Simulator:
         if self.swap_reward_fare:
             # need to swap these since for the fixed controller we're using a global fare adjustment
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
+            #self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
+            #self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, fare-remuneration)
         else:
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
 
