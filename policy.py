@@ -124,6 +124,11 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
             constraints.append(cp.sum(flows_between_locations[k][:, i]) - cp.sum(flows_between_locations[k][i, :]) + outside_arrival_rate + vehicle_returns == arrivals_into_queue[k,i] + balk_rate[k,i])
 
+    # 3. no self-transitions
+    for k in range(n_loc):
+        for i in range(n_loc):
+            constraints.append(flows_between_locations[k][i, i] == 0)
+
     prob = cp.Problem(objective, constraints)
 
     return [prob, total_arrival_rates, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate]
@@ -169,6 +174,11 @@ def get_cvxpy_prob_agg_queue(model_config):
             vehicle_returns = (1 - model_config.exit_prob) * cp.sum([arrivals_into_queue[k, j] * model_config.customer_transitions[j][i] for j in range(n_loc)])
             constraints.append(cp.sum(flows_between_locations[k][:, i]) - cp.sum(flows_between_locations[k][i, :]) + outside_arrival_rate + vehicle_returns == arrivals_into_queue[k, i] + balk_rate[k, i])
 
+    # no self-transitions
+    for k in range(n_loc):
+        for i in range(n_loc):
+            constraints.append(flows_between_locations[k][i, i] == 0)
+
     prob = cp.Problem(objective, constraints)
     return [prob, total_arrival_rates, arrivals_into_queue, flows_between_locations, balk_rate]
 
@@ -193,7 +203,7 @@ def get_policies_agg_queue(model_config):
                 if j != i:
                     action_rates[j] = flows_between_locations[k].value[i, j]
             action_rates[n_loc] = balk_rate.value[k, i]
-            total = sum(action_rates) - flows_between_locations[k].value[i,i]
+            total = sum(action_rates)
 
             if total > 0:
                 policies[k][i] = [r / total for r in action_rates]
@@ -238,7 +248,7 @@ def get_policies(model_config, input_vehicle_rewards=None):
             action_rates[n_loc] = balk_rate.value[k, i]
 
             # normalize to probabilities
-            total = sum(action_rates) - flows_between_locations[k].value[i,i]
+            total = sum(action_rates)
             if total > 0:
                 policies[k][i] = [r / total for r in action_rates]
             else:
