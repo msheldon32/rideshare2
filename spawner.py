@@ -25,15 +25,32 @@ class Spawner:
 
         self.epoch_hour = epoch.hour
 
+        raw_spawns = []
         with open("data/spawns.csv") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 dt = datetime.fromisoformat(row["time"])
                 t = (dt-epoch).total_seconds()/3600
                 #t = t - 0.25 # arrive 15 minutes early
-                self.spawn_events.append((t, int(row["period"]), int(row["cluster"])))
+                raw_spawns.append([t, int(row["period"]), int(row["cluster"])])
 
-        #self.spawn_events.sort()
+        raw_spawns.sort()
+
+        # collapse weekend-sized gaps while preserving hour-of-day.
+        # must mirror the exact logic used in trip_reqs.py so that
+        # spawn and request timelines stay aligned.
+        cumulative_shift = 0.0
+        prev_t = raw_spawns[0][0] if raw_spawns else 0.0
+        for r in raw_spawns:
+            original_t = r[0]
+            gap = original_t - cumulative_shift - prev_t
+            if gap > 24:
+                extra = ((gap - 1) // 24) * 24
+                cumulative_shift += extra
+            r[0] = original_t - cumulative_shift
+            prev_t = r[0]
+
+        self.spawn_events = [(r[0], r[1], r[2]) for r in raw_spawns]
 
 
 

@@ -14,8 +14,11 @@ class Observer:
         self.total_subsidy = 0
         self.total_exit_cost = 0
 
+        self.reward_by_period = [0.0 for _ in range(N_PERIODS)]
+        self.profit_by_period = [0.0 for _ in range(N_PERIODS)]
+
         self.trips_in_cluster = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
-    
+
     def observe_request(self, request, remuneration, admitted):
         self.total_requests += 1
         if admitted:
@@ -23,9 +26,11 @@ class Observer:
 
             self.trips_in_cluster[request.period][request.start_cluster] += 1
 
-    def observe_reward(self, total_reward, profit):
+    def observe_reward(self, total_reward, profit, period):
         self.total_reward += total_reward
         self.profit += profit
+        self.reward_by_period[period] += total_reward
+        self.profit_by_period[period] += profit
 
     def reset(self):
         self.total_requests = 0
@@ -37,6 +42,8 @@ class Observer:
         self.total_revenue = 0
         self.total_subsidy = 0
         self.total_exit_cost = 0
+        self.reward_by_period = [0.0 for _ in range(N_PERIODS)]
+        self.profit_by_period = [0.0 for _ in range(N_PERIODS)]
         self.trips_in_cluster = [[0 for i in range(N_CLUSTERS)] for j in range(N_PERIODS)]
 
     def save_trip_counts(self, fname):

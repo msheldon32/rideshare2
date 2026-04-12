@@ -113,7 +113,7 @@ class Simulator:
             max_t = max(req.time for req in self.requests) if self.requests else 0
         else:
             max_t = 0
-            while max_t < 10000:
+            while max_t < 7500:
                 req_event = self.requester.get_request_poisson(max_t)
                 max_t = req_event[0]
                 heapq.heappush(self.next_events, req_event)
@@ -264,7 +264,7 @@ class Simulator:
         else:
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
 
-        self.observer.observe_reward(fare, fare-remuneration)
+        self.observer.observe_reward(fare, fare-remuneration, self.get_period())
         self.observer.total_revenue += fare
 
         #end_time = request.time + self.grid.get_travel_time(request.start_cluster, request.end_cluster, self.get_period())
@@ -288,7 +288,7 @@ class Simulator:
             print(f"leaving the system.")
             if cluster != _class:
                 cost = self.grid.get_travel_cost(cluster, _class, period)
-                self.observer.observe_reward(-cost, 0)
+                self.observer.observe_reward(-cost, 0, period)
                 self.observer.total_exit_cost += cost
             return
         if action == cluster:
@@ -319,7 +319,7 @@ class Simulator:
         if self.models[self.get_period()][event._class].decide_exit():
             if event.cluster != event._class:
                 cost = self.grid.get_travel_cost(event.cluster, event._class, period)
-                self.observer.observe_reward(-cost, 0)
+                self.observer.observe_reward(-cost, 0, period)
                 self.observer.total_exit_cost += cost
             return
 
@@ -334,7 +334,7 @@ class Simulator:
         subsidy = self.controller.get_subsidy(period, driver_class, start, end)
         self.estimators[self.get_period()].observe_subsidy(driver_class, start, end, subsidy)
 
-        self.observer.observe_reward(0, -subsidy)
+        self.observer.observe_reward(0, -subsidy, period)
         self.observer.total_subsidy += subsidy
 
         # let the driver decide where to spawn
@@ -346,7 +346,7 @@ class Simulator:
         # accumulate mileage cost
         period = get_period(event.time + self.epoch_hour)
         cost = self.grid.distance_costs[period][event.start_cluster][event.cluster]
-        self.observer.observe_reward(-cost, 0)
+        self.observer.observe_reward(-cost, 0, period)
         self.observer.total_travel_cost += cost
 
         self.decide(event.cluster, event._class)
@@ -375,7 +375,7 @@ class Simulator:
         print(f"waiting cost: {waiting_cost}")
         print(f"transit cost: {transit_cost}")
         print(f"dt: {dt}, total waiting: {total_waiting}")
-        self.observer.observe_reward(-cost, 0)
+        self.observer.observe_reward(-cost, 0, self.get_period())
 
         self.observer.total_waiting_cost += waiting_cost
         self.observer.total_travel_cost += transit_cost
@@ -391,15 +391,17 @@ class Simulator:
             # skipping weekends
             self.rate_tracker.reset(event_t)
             self.controller.reset(event_t)
+
+            self.t = event_t
         else:
             self.accumulate_rewards(event_t)
 
-        self.t = event_t
+            self.t = event_t
 
-        if self.t - self.last_ewma_update >= self.update_timestep:
-            for est in self.estimators:
-                est.update_estimator()
-            self.last_ewma_update = self.t
+            if self.t - self.last_ewma_update >= self.update_timestep:
+                for est in self.estimators:
+                    est.update_estimator()
+                self.last_ewma_update = self.t
 
         # recompute policies periodically
         if self.t - self.last_policy_update >= self.policy_update_window:
@@ -480,5 +482,8 @@ if __name__ == "__main__":
     print(f"total trips: {sim_observer.total_trips}")
     print(f"total requests: {sim_observer.total_requests}")
     print(f"total exit cost: {sim_observer.total_exit_cost}")
+    print("Reward by period:")
+    for p in range(len(sim_observer.reward_by_period)):
+        print(f"  period {p}: reward={sim_observer.reward_by_period[p]:.2f}, profit={sim_observer.profit_by_period[p]:.2f}")
     if controller_type == "baseline":
         sim_observer.save_trip_counts("trip_counts.csv")
