@@ -20,12 +20,14 @@ class RateTracker:
 
 
 class Estimator:
-    def __init__(self, rate_tracker, grid, period, controller):
+    def __init__(self, rate_tracker, grid, period, controller, alpha=0.0):
         self.rate_tracker = rate_tracker
         self.grid = grid
         self.period = period
         self.n_locations = N_CLUSTERS
         self.controller = controller
+
+        self.alpha = alpha
 
 
 

@@ -39,7 +39,7 @@ class Estimator:
         self.tax_scale = 0.0
         self.time_window = 2
 
-        self.tax_alpha = 0.9
+        self.tax_alpha = 0.8
 
         self.alpha=alpha
 

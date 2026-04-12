@@ -193,7 +193,8 @@ def get_policies_agg_queue(model_config):
                 if j != i:
                     action_rates[j] = flows_between_locations[k].value[i, j]
             action_rates[n_loc] = balk_rate.value[k, i]
-            total = sum(action_rates)
+            total = sum(action_rates) - flows_between_locations[k].value[i,i]
+
             if total > 0:
                 policies[k][i] = [r / total for r in action_rates]
             else:
@@ -237,7 +238,7 @@ def get_policies(model_config, input_vehicle_rewards=None):
             action_rates[n_loc] = balk_rate.value[k, i]
 
             # normalize to probabilities
-            total = sum(action_rates)
+            total = sum(action_rates) - flows_between_locations[k].value[i,i]
             if total > 0:
                 policies[k][i] = [r / total for r in action_rates]
             else:

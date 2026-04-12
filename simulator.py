@@ -15,14 +15,15 @@ import empirical_tt
 import model_alt
 import model
 import estimator_mean
+import estimator_ewma
 import policy
 from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.3, seed=None, ewma_timestep=0.5, policy_smoothing=0.1,
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=0.2,
                  use_empirical=False):
-        input("to do: have custom fare adjustments for different values of alpha")
+        #input("to do: have custom fare adjustments for different values of alpha")
         if seed is not None:
             random.seed(seed)
 
@@ -45,7 +46,7 @@ class Simulator:
         self.empirical_tt = empirical_tt.EmpiricalTravel(self.grid, self.requests)
 
         self.controller_type = controller_type
-        self.rate_tracker = estimator_mean.RateTracker(n_clusters)
+        self.rate_tracker = estimator_ewma.RateTracker(n_clusters)
 
         if controller_type == "baseline":
             self.controller = controller.Controller()
@@ -66,9 +67,10 @@ class Simulator:
         self.use_agg_queue_policy = False#controller_type in ["method", "smoothed"]
 
         # one estimator per period
-        self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
+        #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
+        self.estimators = [estimator_ewma.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
 
-        self.ewma_timestep = ewma_timestep
+        self.update_timestep = update_timestep
         self.last_ewma_update = 0.0
 
         # default policy: always enter the queue at the current location
@@ -221,8 +223,8 @@ class Simulator:
             return
         driver_class = random.choices(range(self.n_clusters), driver_counts, k=1)[0]
 
-        if new_tax is not None:
-            self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, new_tax)
+        #if new_tax is not None:
+        #    self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, new_tax)
 
         # expel a random driver from the queue
         driver_idx = random.randrange(len(self.drivers[request.start_cluster][driver_class]))
@@ -247,12 +249,13 @@ class Simulator:
             print("-------------------")
 
         # pm: class specific reward interpreted on a sliding scale based on alpha
-        remuneration, tr, pm = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.gross_fare_cents, request.net_fare_cents, n_drivers, request.time, waiting_time)
+        remuneration, tr, pm, tax = self.controller.get_price(request.period, driver_class, request.start_cluster, request.end_cluster, request.gross_fare_cents, request.net_fare_cents, n_drivers, request.time, waiting_time)
 
         fare = request.net_fare_cents / 100
 
         # estimator observations
         self.estimators[self.get_period()].observe_reward(driver_class, request.start_cluster, pm)
+        self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, tax)
         if self.swap_reward_fare:
             # need to swap these since for the fixed controller we're using a global fare adjustment
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
@@ -294,8 +297,8 @@ class Simulator:
             print(f"reporting arrival, ct: {n_drivers}")
             self.drivers[cluster][_class].append(self.t)
             new_tax = self.controller.report_event(cluster, self.t, n_drivers, "arrival")
-            if new_tax is not None:
-                self.estimators[self.get_period()].observe_tax(_class, cluster, new_tax)
+            #if new_tax is not None:
+            #    self.estimators[self.get_period()].observe_tax(_class, cluster, new_tax)
             self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
             self.estimators[self.get_period()].observe_arrival(cluster, _class, self.t)
             print(f"chose to enter queue: {cluster}")
@@ -393,7 +396,7 @@ class Simulator:
 
         self.t = event_t
 
-        if self.t - self.last_ewma_update >= self.ewma_timestep:
+        if self.t - self.last_ewma_update >= self.update_timestep:
             for est in self.estimators:
                 est.update_estimator()
             self.last_ewma_update = self.t
@@ -442,11 +445,13 @@ def get_exit_probs():
         num = 0
         denom = 0
 
-        for cluster in range(N_CLUSTERS//4):
+        for cluster_idx in range(N_CLUSTERS//4):
+            cluster = probs[cluster_idx][1]
             num += exit_rates[period][cluster]
             denom += arrival_rates[period][cluster]
         
-        exit_probs[period] = probs[0][0]#num/denom
+        #exit_probs[period] = probs[0][0]#num/denom
+        exit_probs[period] = num/denom
     
     return exit_probs
 
@@ -457,7 +462,9 @@ if __name__ == "__main__":
     print(exit_probs)
     input("continue")
 
-    controller_type = "baseline"
+    input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
+
+    controller_type = "method"
     use_empirical = True 
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical)

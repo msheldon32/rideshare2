@@ -9,7 +9,7 @@ class Controller:
         #if (fare/100) > 100:
         #    print(f"fare: {fare/100}")
         #    raise Exception("stop, invalid fare.")
-        return fare/100, fare/100, fare/100
+        return fare/100, fare/100, fare/100, 0
 
     def get_subsidy(self, period, _class, start, end):
         return 0
@@ -34,7 +34,7 @@ class FixedController:
         #    raise Exception("stop, invalid fare.")
         #return (1-self.ptg)*(fare/100)
         remun = (fare/100) - ((self.ptg)*(gross_fare/100))
-        return remun, remun, remun
+        return remun, remun, remun, 0
 
     def get_subsidy(self, period, _class, start, end):
         return 0
@@ -55,19 +55,21 @@ class MethodController:
         self.grid = grid
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
-        self.beta = 0.0
-        self.ceiling = 20
+        #self.tax_buffer = [[] for i in range(N_CLUSTERS)]
+        self.beta = 0.8
+        self.ceiling = 1000
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
-        total_opt = (fare/100) - self.last_tax[start_cluster]*RESERVATION
+        tax = min(self.last_tax[start_cluster]*RESERVATION, fare/100)
+        total_opt = (fare/100) - tax
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
         #total_opt = min(max(total_opt, profit_max), fare/100)
 
-        return (1-self.alpha)*total_opt + self.alpha*profit_max, total_opt, profit_max
+        return (1-self.alpha)*total_opt + self.alpha*profit_max, total_opt, profit_max, tax
 
     def get_subsidy(self, period, _class, start, end):
         return self.alpha * self.grid.get_prepaid_cost(_class, start, end, period)
@@ -130,17 +132,18 @@ class SmoothedController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-        self.ceiling = 20
+        self.ceiling = 1000
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         #tax = self.tax_buffers[start_cluster][-1]
         tax = self.tax_buffers[start_cluster].pop(0)
-        total_opt = (fare/100) - tax*RESERVATION
+        tax = min(tax*RESERVATION, fare/100)
+        total_opt = (fare/100) - tax
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
         #total_opt = min(max(total_opt, profit_max), fare/100)
 
-        return (1-self.alpha)*total_opt + self.alpha*profit_max, total_opt, profit_max
+        return (1-self.alpha)*total_opt + self.alpha*profit_max, total_opt, profit_max, tax
 
     def get_subsidy(self, period, _class, start, end):
         return self.alpha * self.grid.get_prepaid_cost(_class, start, end, period)
