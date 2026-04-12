@@ -75,7 +75,7 @@ class Estimator:
         # EWMA point estimates — updated on flush(), initialised to priors
         # ------------------------------------------------------------------
         self.spawn_est      = [1.0         for _ in range(n)]
-        self.service_est    = [1.0         for _ in range(n)]
+        self.service_est    = [0.5         for _ in range(n)]
         self.arrival_est    = [1.0         for _ in range(n)]
         self.w_est          = [0.5         for _ in range(n)]
         self.queue_est      = [0.0         for _ in range(n)]

@@ -57,13 +57,14 @@ class MethodController:
 
         #self.tax_buffer = [[] for i in range(N_CLUSTERS)]
         self.beta = 0.8
-        self.ceiling = 1000
+        self.ceiling = 10
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
-        tax = min(self.last_tax[start_cluster]*RESERVATION, fare/100)
+        #tax = min(self.last_tax[start_cluster]*RESERVATION, fare/100)
+        tax = self.last_tax[start_cluster]*RESERVATION
         total_opt = (fare/100) - tax
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
@@ -132,12 +133,12 @@ class SmoothedController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-        self.ceiling = 1000
+        self.ceiling = 10
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         #tax = self.tax_buffers[start_cluster][-1]
         tax = self.tax_buffers[start_cluster].pop(0)
-        tax = min(tax*RESERVATION, fare/100)
+        #tax = min(tax*RESERVATION, fare/100)
         total_opt = (fare/100) - tax
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
 
