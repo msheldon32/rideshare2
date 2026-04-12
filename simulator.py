@@ -22,7 +22,7 @@ from util import *
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
                  controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=0.2,
-                 use_empirical=False):
+                 use_empirical=False, use_agg=False):
         #input("to do: have custom fare adjustments for different values of alpha")
         if seed is not None:
             random.seed(seed)
@@ -64,7 +64,7 @@ class Simulator:
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
         use_fare_tax = True#controller_type in ["method", "smoothed", "baseline", "fixed"]
-        self.use_agg_queue_policy = False#controller_type in ["method", "smoothed"]
+        self.use_agg_queue_policy = use_agg#controller_type in ["method", "smoothed"]
 
         # one estimator per period
         #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
@@ -466,10 +466,11 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "method"
-    use_empirical = True 
+    controller_type = "baseline"
+    use_empirical = True
+    use_agg = False 
 
-    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical)
+    simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical, use_agg=use_agg)
     while not simulator.is_stopped():
         simulator.step()
     sim_observer = simulator.observer
