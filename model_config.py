@@ -34,3 +34,6 @@ class ModelConfig:
 
     def get_rebalance_cost(self, k, i, j):
         return self.cost_to(i,j) + self.get_potential_change(k,i,j)
+
+    def true_cost(self, i,j):
+        return self.grid.costs[self.period][i][j]

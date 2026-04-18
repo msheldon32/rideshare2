@@ -23,15 +23,17 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=0.8,
-                 use_empirical=False, use_agg=False, reevaluate_queues_on_period_change=False):
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=1.0,
+                 use_empirical=False, use_agg=False, reevaluate=False, clear_at_1=True):
         #input("to do: have custom fare adjustments for different values of alpha")
         if seed is not None:
             random.seed(seed)
 
+        self.reevaluate=reevaluate
+        self.clear_at_1 = clear_at_1
+
         self.policy_update_window = 24
         self.policy_smoothing = policy_smoothing
-        self.reevaluate_queues_on_period_change = reevaluate_queues_on_period_change
         self.inactive_cleared = False
 
         self.requests = requests
@@ -177,6 +179,8 @@ class Simulator:
 
             est_reward = policy.estimate_total_reward(config, new_policies)
             print(f"estimated total reward rate: {est_reward:.4f}")
+            #print(f"new_policy sample (5,7): {new_policies[5][5]}")
+            #print(f"new_policy sample: {new_policies[5][7]}")
 
             for _class in range(self.n_classes):
                 old_policy = self.models[period][_class].policy
@@ -226,6 +230,13 @@ class Simulator:
         for cluster, _class in queued:
             self.decide(cluster, _class)
 
+    def empty_queues(self):
+        queued = []
+        for cluster in range(self.n_clusters):
+            for _class in range(self.n_classes):
+                self.drivers[cluster][_class] = []
+
+
     def get_queue_lengths(self):
         return [sum(len(self.drivers[cluster][_class]) for _class in range(self.n_classes)) for cluster in range(self.n_clusters)]
 
@@ -233,11 +244,11 @@ class Simulator:
         old_driver_ct = 0
         period = get_period(time + self.epoch_hour)
         new_driver_ct = 0
-        # remove any drivers that have been in the queue for more than 5 hours
+        # remove any drivers that have been in the queue for more than 2 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
             expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
-            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
+            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
             new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
@@ -303,9 +314,9 @@ class Simulator:
         self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, tax)
         if self.swap_reward_fare:
             # need to swap these since for the fixed controller we're using a global fare adjustment
-            self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
-            #self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
-            #self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, fare-remuneration)
+            #self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
+            self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
+            self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, fare-remuneration)
         else:
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
 
@@ -469,8 +480,10 @@ class Simulator:
             if self.t - self.last_policy_update >= self.policy_update_window:
                 self.update_policies()
 
-            if self.reevaluate_queues_on_period_change and self.get_period() != old_period:
+            if self.get_period() != old_period and self.reevaluate:
                 self.reevaluate_queues()
+            if self.get_period() != old_period and self.clear_at_1 and self.get_period() == 1:
+                self.empty_queues()
 
         if event_type == "a":
             self.process_arrival(event)
@@ -531,8 +544,8 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "method"
-    use_empirical = False
+    controller_type = "fixed"
+    use_empirical = True
     use_agg = False
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical, use_agg=use_agg)

@@ -135,7 +135,7 @@ class SmoothedController:
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
 
-        self.ceiling = 10
+        self.ceiling = 20
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         #tax = self.tax_buffers[start_cluster][-1]

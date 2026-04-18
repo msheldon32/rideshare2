@@ -88,15 +88,17 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
     for k in range(n_loc):
         for i in range(n_loc):
-            expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
+            expected_tt_difference = 0#-sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
             vehicle_utilities[k][i] = (expected_tt_difference + vehicle_rewards[k][i])
 
     # objective function: minimize the travel time multiplied by the flow minus the log of (service rate - total arrival rate across all origins)
     obj = 0
     for k in range(n_loc):
         for i in range(n_loc):
+            if k != i:
+                obj += model_config.true_cost(i,k) * balk_rate[k,i]
             for j in range(n_loc):
-                travel_cost = model_config.get_rebalance_cost(k, i, j)
+                travel_cost = model_config.true_cost(i,j)#model_config.get_rebalance_cost(k, i, j)
                 obj += travel_cost * flows_between_locations[k][i,j]
 
     for i in range(n_loc):
@@ -144,14 +146,16 @@ def get_cvxpy_prob_agg_queue(model_config):
     vehicle_utilities = [[None for i in range(n_loc)] for k in range(n_loc)]
     for k in range(n_loc):
         for i in range(n_loc):
-            expected_tt_difference = -sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
+            expected_tt_difference = 0#-sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
             vehicle_utilities[k][i] = expected_tt_difference + model_config.producer_rewards[k][i]
 
     obj = 0
     for k in range(n_loc):
         for i in range(n_loc):
+            if k != i:
+                obj += model_config.true_cost(i,k) * balk_rate[k,i]
             for j in range(n_loc):
-                travel_cost = model_config.get_rebalance_cost(k, i, j)
+                travel_cost = model_config.true_cost(i,j)# model_config.get_rebalance_cost(k, i, j)
                 obj += travel_cost * flows_between_locations[k][i, j]
 
     # aggregate queue length: E[L] = lambda / (mu - lambda) = mu * inv_pos(mu - lambda) - 1
@@ -191,7 +195,7 @@ def get_policies_agg_queue(model_config):
     #        raise ValueError(f"CLARABEL status: {prob.status}")
     #except Exception as e:
     #    print(f"CLARABEL failed ({e}), falling back to SCS")
-    prob.solve(solver=cp.SCS, max_iters=20000, eps=1e-9)
+    prob.solve(solver=cp.SCS, eps_rel=1e-9)
 
     n_loc = len(model_config.locations)
     policies = [[None for i in range(n_loc)] for k in range(n_loc)]
@@ -222,7 +226,7 @@ def get_policies(model_config, input_vehicle_rewards=None):
     #        raise ValueError(f"CLARABEL status: {prob.status}")
     #except Exception as e:
     #    print(f"CLARABEL failed ({e}), falling back to SCS")
-    prob.solve(solver=cp.SCS, max_iters=20000, eps=1e-9)
+    prob.solve(solver=cp.SCS, eps_rel=1e-9)
 
     n_loc = len(model_config.locations)
 

@@ -35,11 +35,12 @@ def period_hours_in_window(t_start, t_end, period_idx, epoch):
             offset = days_to_mon * 24 - dt.hour - dt.minute/60 - dt.second/3600
             cur = min(cur + offset, t_end)
             continue
-        hour_in_day = (cur + epoch.hour) % 24
+        hour_in_day = dt.hour + dt.minute/60 + dt.second/3600
         cur_period = int(hour_in_day // PERIOD_LENGTH)
         next_boundary_hod = (cur_period + 1) * PERIOD_LENGTH
         hours_to_boundary = next_boundary_hod - hour_in_day
-        nxt = min(cur + hours_to_boundary, t_end)
+        hours_to_active_end = (2 - dt.weekday()) * 24 + (24 - hour_in_day)
+        nxt = min(cur + hours_to_boundary, cur + hours_to_active_end, t_end)
         if cur_period == period_idx:
             total += nxt - cur
         cur = nxt
