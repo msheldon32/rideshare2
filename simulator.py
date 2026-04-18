@@ -17,6 +17,7 @@ import model_alt
 import model
 import estimator_mean
 import estimator_ewma
+import estimator_empirical
 import policy
 from util import *
 
@@ -69,9 +70,14 @@ class Simulator:
         use_fare_tax = True#controller_type in ["method", "smoothed", "baseline", "fixed"]
         self.use_agg_queue_policy = use_agg#controller_type in ["method", "smoothed"]
 
+        # spawner is needed up front so the empirical estimator can read its trace
+        self.spawner = spawner.Spawner(epoch)
+        self.trace_stats = estimator_empirical.TraceStatistics(requests, self.spawner.spawn_events, epoch)
+
         # one estimator per period
         #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
-        self.estimators = [estimator_ewma.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
+        self.empirical_estimator = True
+        self.estimators = [estimator_empirical.Estimator(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
 
         self.update_timestep = update_timestep
         self.last_ewma_update = 0.0
@@ -98,7 +104,6 @@ class Simulator:
         self.t = 0
         self.last_policy_update = 0
 
-        self.spawner = spawner.Spawner(epoch)
         self.requester = requester.Requester(self.grid, epoch)
         self.observer = observer.Observer()
         self.observer_reset = False
@@ -142,6 +147,11 @@ class Simulator:
         print("done.")
 
     def update_policies(self):
+        if self.empirical_estimator:
+            for est in self.estimators:
+                est.flush(self.t)
+            self.rate_tracker.flush(self.t)
+
         if self.t < self.warmup_period:
             self.observer.reward_printout(self.t)
         else:
@@ -177,9 +187,10 @@ class Simulator:
                 ]
                 self.models[period][_class] = model.DriverModel(blended, self.exit_probs[period])
 
-        for est in self.estimators:
-            est.flush()
-        self.rate_tracker.flush(self.t)
+        if not self.empirical_estimator:
+            for est in self.estimators:
+                est.flush(self.t)
+            self.rate_tracker.flush(self.t)
 
         self.last_policy_update = self.t
 
@@ -520,7 +531,7 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "baseline"
+    controller_type = "method"
     use_empirical = False
     use_agg = False
 

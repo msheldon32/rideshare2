@@ -231,7 +231,7 @@ class Estimator:
     # flush: means list -> one EWMA step -> clear means list
     # ------------------------------------------------------------------
 
-    def flush(self):
+    def flush(self, t=None):
         self._flush_1d(self._spawn_means,   self.spawn_est)
         self._flush_1d(self._service_means, self.service_est)
         self._flush_1d(self._arrival_means, self.arrival_est)
