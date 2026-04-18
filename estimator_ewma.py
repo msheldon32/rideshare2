@@ -17,6 +17,11 @@ class RateTracker:
     def reset(self, t):
         self.last_spawn_time = [t for _ in range(self.n_locations)]
         self.last_service_time = [t for _ in range(self.n_locations)]
+        self.last_arrival_time = [t for _ in range(self.n_locations)]
+        self.queue_lengths = [0 for _ in range(self.n_locations)]
+        for loc in range(self.n_locations):
+            self.services[loc].clear()
+        self.last_arrival_time_in_period = [[float("inf") for _ in range(self.n_locations)] for _ in range(N_PERIODS)]
 
     def flush(self, t):
         self.last_spawn_time = [t for _ in range(self.n_locations)]

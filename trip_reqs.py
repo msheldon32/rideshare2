@@ -84,27 +84,8 @@ def get_trip_requests():
 
     epoch = out_reqs[0][0]
 
-    # convert to hours-since-epoch
-    raw = [
-            [( r[0] - epoch).total_seconds()/3600, r[1], r[2], r[3], r[4], r[5], r[6]] for r in out_reqs
-            ]
-
-    # collapse weekend-sized gaps while preserving hour-of-day (shift by multiples of 24h)
-    cumulative_shift = 0.0
-    prev_t = raw[0][0]
-    for r in raw:
-        original_t = r[0]
-        gap = original_t - cumulative_shift - prev_t
-        if gap > 24:
-            # shift this (and all subsequent) back by the largest 24h-multiple
-            # that leaves a residual in (0, 24]
-            extra = ((gap - 1) // 24) * 24
-            cumulative_shift += extra
-        r[0] = original_t - cumulative_shift
-        prev_t = r[0]
-
     out_reqs = [
-            Request(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) for r in raw
+            Request((r[0] - epoch).total_seconds()/3600, r[1], r[2], r[3], r[4], r[5], r[6]) for r in out_reqs
             ]
 
     return out_reqs, epoch

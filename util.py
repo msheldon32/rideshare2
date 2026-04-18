@@ -13,7 +13,7 @@ COST_PER_MILE = 0.535
 METERS_PER_MILE = 1609.34
 
 def get_period(t):
-    return int((t + 2) % 24 // PERIOD_LENGTH)
+    return int((t+1) % 24 // PERIOD_LENGTH)
 
 @dataclass(order=True)
 class Request:

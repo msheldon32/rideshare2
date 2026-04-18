@@ -36,20 +36,6 @@ class Spawner:
 
         raw_spawns.sort()
 
-        # collapse weekend-sized gaps while preserving hour-of-day.
-        # must mirror the exact logic used in trip_reqs.py so that
-        # spawn and request timelines stay aligned.
-        cumulative_shift = 0.0
-        prev_t = raw_spawns[0][0] if raw_spawns else 0.0
-        for r in raw_spawns:
-            original_t = r[0]
-            gap = original_t - cumulative_shift - prev_t
-            if gap > 24:
-                extra = ((gap - 1) // 24) * 24
-                cumulative_shift += extra
-            r[0] = original_t - cumulative_shift
-            prev_t = r[0]
-
         self.spawn_events = [(r[0], r[1], r[2]) for r in raw_spawns]
 
 

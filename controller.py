@@ -56,7 +56,7 @@ class MethodController:
         self.last_tax = [0 for i in range(N_CLUSTERS)]
 
         #self.tax_buffer = [[] for i in range(N_CLUSTERS)]
-        self.beta = 0.8
+        self.beta = 0.0
         self.ceiling = 10
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
@@ -114,6 +114,8 @@ class MethodController:
 
     def reset(self, t):
         self.last_t = [t for i in range(N_CLUSTERS)]
+        self.last_tax = [0 for i in range(N_CLUSTERS)]
+        self.last_length = [0 for i in range(N_CLUSTERS)]
 
     def get_tax(self, cluster):
         return self.last_tax[cluster]
@@ -192,6 +194,8 @@ class SmoothedController:
 
     def reset(self, t):
         self.last_t = [t for i in range(N_CLUSTERS)]
+        self.tax_buffers = [[] for i in range(N_CLUSTERS)]
+        self.last_length = [0 for i in range(N_CLUSTERS)]
 
     def get_tax(self, cluster):
         return self.last_tax[cluster]

@@ -4,6 +4,7 @@ import random
 import heapq
 import math
 import csv
+from datetime import timedelta
 
 import trip_reqs
 import requester
@@ -21,14 +22,16 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=0.2,
-                 use_empirical=False, use_agg=False):
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=0.8,
+                 use_empirical=False, use_agg=False, reevaluate_queues_on_period_change=False):
         #input("to do: have custom fare adjustments for different values of alpha")
         if seed is not None:
             random.seed(seed)
 
-        self.policy_update_window = 48 
+        self.policy_update_window = 24
         self.policy_smoothing = policy_smoothing
+        self.reevaluate_queues_on_period_change = reevaluate_queues_on_period_change
+        self.inactive_cleared = False
 
         self.requests = requests
         self.n_classes = n_classes
@@ -111,6 +114,7 @@ class Simulator:
             for req in self.requests:
                 heapq.heappush(self.next_events, (req.time, "r", req))
             max_t = max(req.time for req in self.requests) if self.requests else 0
+            #max_t = 5000
         else:
             max_t = 0
             while max_t < 7500:
@@ -138,6 +142,12 @@ class Simulator:
         print("done.")
 
     def update_policies(self):
+        if self.t < self.warmup_period:
+            self.observer.reward_printout(self.t)
+        else:
+            self.observer.reward_printout(self.t-self.warmup_period)
+            agg_tag = "agg" if self.use_agg_queue_policy else "noagg"
+            self.observer.write_reward_csv(f"rewards_{self.controller_type}_{agg_tag}.csv", self.t)
         tax_scale = min(1.0, self.t / self.tax_warmup)
         for est in self.estimators:
             est.tax_scale = tax_scale
@@ -181,6 +191,30 @@ class Simulator:
     def get_period(self):
         return get_period(self.t + self.epoch_hour)
 
+    def is_active_day(self, t):
+        # True if simulation time t falls on Mon, Tue, or Wed (weekday 0-2).
+        return (self.epoch + timedelta(hours=t)).weekday() <= 2
+
+    def clear_all_drivers(self):
+        for cluster in range(self.n_clusters):
+            for _class in range(self.n_classes):
+                self.drivers[cluster][_class] = []
+        for i in range(self.n_clusters):
+            for j in range(self.n_clusters):
+                for k in range(self.n_classes):
+                    self.transiters[i][j][k] = 0
+
+    def reevaluate_queues(self):
+        # Pop every queued driver and re-run decide() under the current period's policy.
+        queued = []
+        for cluster in range(self.n_clusters):
+            for _class in range(self.n_classes):
+                for _ in self.drivers[cluster][_class]:
+                    queued.append((cluster, _class))
+                self.drivers[cluster][_class] = []
+        for cluster, _class in queued:
+            self.decide(cluster, _class)
+
     def get_queue_lengths(self):
         return [sum(len(self.drivers[cluster][_class]) for _class in range(self.n_classes)) for cluster in range(self.n_clusters)]
 
@@ -191,9 +225,9 @@ class Simulator:
         # remove any drivers that have been in the queue for more than 5 hours
         for _class in range(len(self.drivers[cluster])):
             old_driver_ct += len(self.drivers[cluster][_class])
-            #expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 5]
-            #self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 5]
-            #new_driver_ct += len(self.drivers[cluster][_class])
+            expelled_drivers = [x for x in self.drivers[cluster][_class] if (time-x) >= 2]
+            self.drivers[cluster][_class] = [x for x in self.drivers[cluster][_class] if (time-x) < 2]
+            new_driver_ct += len(self.drivers[cluster][_class])
 
     def process_request(self, request):
         if not self.observer_reset and self.t >= self.warmup_period:
@@ -381,19 +415,36 @@ class Simulator:
         self.observer.total_travel_cost += transit_cost
 
     def step(self):
-        self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
         event_t, event_type, event = heapq.heappop(self.next_events)
 
 
         print(f"({event_t}): {event}")
 
-        if event_t - self.t > 24:
-            # skipping weekends
+        if not self.is_active_day(event_t) or event_t - self.t > 24:
+            # skipping inactive days (Thu-Sun) or any gap longer than a day
+            if not self.inactive_cleared:
+                # finalize pre-gap state: consume buffers, EWMA-flush, recompute
+                # policies, and clear driver state so nothing leaks across the gap.
+                for est in self.estimators:
+                    est.update_estimator()
+                self.update_policies()
+                self.clear_all_drivers()
+                self.inactive_cleared = True
+
             self.rate_tracker.reset(event_t)
             self.controller.reset(event_t)
 
+            # keep the update timers pinned to sim time so the first active-day
+            # event doesn't see a multi-day delta and fire on empty buffers.
+            self.last_ewma_update = event_t
+            self.last_policy_update = event_t
+
             self.t = event_t
+            return
         else:
+            self.inactive_cleared = False
+            self.estimators[self.get_period()].observe_queue_lengths(self.t, self.get_queue_lengths())
+            old_period = self.get_period()
             self.accumulate_rewards(event_t)
 
             self.t = event_t
@@ -403,9 +454,12 @@ class Simulator:
                     est.update_estimator()
                 self.last_ewma_update = self.t
 
-        # recompute policies periodically
-        if self.t - self.last_policy_update >= self.policy_update_window:
-            self.update_policies()
+            # recompute policies periodically
+            if self.t - self.last_policy_update >= self.policy_update_window:
+                self.update_policies()
+
+            if self.reevaluate_queues_on_period_change and self.get_period() != old_period:
+                self.reevaluate_queues()
 
         if event_type == "a":
             self.process_arrival(event)
@@ -467,8 +521,8 @@ if __name__ == "__main__":
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
     controller_type = "baseline"
-    use_empirical = True
-    use_agg = False 
+    use_empirical = False
+    use_agg = False
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical, use_agg=use_agg)
     while not simulator.is_stopped():
