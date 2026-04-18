@@ -76,8 +76,6 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     # flows between locations: flows from location i to location j, from vehicles with origin k
     flows_between_locations = [cp.Variable((n_loc, n_loc), nonneg=True) for k in range(n_loc)]
 
-    total_arrival_rates = cp.Variable(n_loc, nonneg=True)
-
     vehicle_rewards = [[cp.Parameter() for i in range(n_loc)] for k in range(n_loc)]
 
     for k in range(n_loc):
@@ -102,7 +100,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
                 obj += travel_cost * flows_between_locations[k][i,j]
 
     for i in range(n_loc):
-        obj -= cp.log(model_config.service_rates[i] - total_arrival_rates[i]) * model_config.reservation
+        obj -= cp.log(model_config.service_rates[i] - cp.sum(arrivals_into_queue[:, i])) * model_config.reservation
 
     for i in range(n_loc):
         for k in range(n_loc):
@@ -113,11 +111,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     # constraints
     constraints = []
 
-    # 1. total arrival rate
-    for i in range(n_loc):
-        constraints.append(total_arrival_rates[i] == cp.sum(arrivals_into_queue[:, i]))
-
-    # 2. flow conservation
+    # 1. flow conservation
     for k in range(n_loc):
         for i in range(n_loc):
             outside_arrival_rate = model_config.arrival_rates[i] if i == k else 0
@@ -126,14 +120,14 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
             constraints.append(cp.sum(flows_between_locations[k][:, i]) - cp.sum(flows_between_locations[k][i, :]) + outside_arrival_rate + vehicle_returns == arrivals_into_queue[k,i] + balk_rate[k,i])
 
-    # 3. no self-transitions
+    # 2. no self-transitions
     for k in range(n_loc):
         for i in range(n_loc):
             constraints.append(flows_between_locations[k][i, i] == 0)
 
     prob = cp.Problem(objective, constraints)
 
-    return [prob, total_arrival_rates, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate]
+    return [prob, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate]
 
 def get_cvxpy_prob_agg_queue(model_config):
     n_loc = len(model_config.locations)
@@ -141,7 +135,6 @@ def get_cvxpy_prob_agg_queue(model_config):
     arrivals_into_queue = cp.Variable((n_loc, n_loc), nonneg=True)
     balk_rate = cp.Variable((n_loc, n_loc), nonneg=True)
     flows_between_locations = [cp.Variable((n_loc, n_loc), nonneg=True) for k in range(n_loc)]
-    total_arrival_rates = cp.Variable(n_loc, nonneg=True)
 
     vehicle_utilities = [[None for i in range(n_loc)] for k in range(n_loc)]
     for k in range(n_loc):
@@ -161,7 +154,7 @@ def get_cvxpy_prob_agg_queue(model_config):
     # aggregate queue length: E[L] = lambda / (mu - lambda) = mu * inv_pos(mu - lambda) - 1
     for i in range(n_loc):
         mu_i = model_config.service_rates[i]
-        obj += (mu_i * cp.inv_pos(mu_i - total_arrival_rates[i]) - 1) * model_config.reservation
+        obj += (mu_i * cp.inv_pos(mu_i - cp.sum(arrivals_into_queue[:, i])) - 1) * model_config.reservation
 
     for i in range(n_loc):
         for k in range(n_loc):
@@ -170,8 +163,6 @@ def get_cvxpy_prob_agg_queue(model_config):
     objective = cp.Minimize(obj)
 
     constraints = []
-    for i in range(n_loc):
-        constraints.append(total_arrival_rates[i] == cp.sum(arrivals_into_queue[:, i]))
     for k in range(n_loc):
         for i in range(n_loc):
             outside_arrival_rate = model_config.arrival_rates[i] if i == k else 0
@@ -184,7 +175,7 @@ def get_cvxpy_prob_agg_queue(model_config):
             constraints.append(flows_between_locations[k][i, i] == 0)
 
     prob = cp.Problem(objective, constraints)
-    return [prob, total_arrival_rates, arrivals_into_queue, flows_between_locations, balk_rate]
+    return [prob, arrivals_into_queue, flows_between_locations, balk_rate]
 
 
 def get_policies_agg_queue(model_config):
