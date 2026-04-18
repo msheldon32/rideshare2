@@ -179,14 +179,14 @@ def get_cvxpy_prob_agg_queue(model_config):
 
 
 def get_policies_agg_queue(model_config):
-    prob, total_arrival_rates, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob_agg_queue(model_config)
-    #try:
-    #    prob.solve(solver=cp.CLARABEL, max_iter=2000, tol_gap_abs=1e-10, tol_gap_rel=1e-10, tol_feas=1e-10, tol_infeas_abs=1e-10, tol_infeas_rel=1e-10)
-    #    if prob.status not in ("optimal", "optimal_inaccurate"):
-    #        raise ValueError(f"CLARABEL status: {prob.status}")
-    #except Exception as e:
-    #    print(f"CLARABEL failed ({e}), falling back to SCS")
-    prob.solve(solver=cp.SCS, eps_rel=1e-9)
+    prob, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob_agg_queue(model_config)
+    try:
+        prob.solve(solver=cp.CLARABEL)
+        if prob.status not in ("optimal", "optimal_inaccurate"):
+            raise ValueError(f"CLARABEL status: {prob.status}")
+    except Exception as e:
+        print(f"CLARABEL failed ({e}), falling back to SCS")
+        prob.solve(solver=cp.SCS, eps_rel=1e-9)
 
     n_loc = len(model_config.locations)
     policies = [[None for i in range(n_loc)] for k in range(n_loc)]
@@ -210,14 +210,14 @@ def get_policies_agg_queue(model_config):
 
 
 def get_policies(model_config, input_vehicle_rewards=None):
-    prob, total_arrival_rates, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob(model_config, input_vehicle_rewards)
-    #try:
-    #    prob.solve(solver=cp.CLARABEL, max_iter=2000, tol_gap_abs=1e-10, tol_gap_rel=1e-10, tol_feas=1e-10, tol_infeas_abs=1e-10, tol_infeas_rel=1e-10)
-    #    if prob.status not in ("optimal", "optimal_inaccurate"):
-    #        raise ValueError(f"CLARABEL status: {prob.status}")
-    #except Exception as e:
-    #    print(f"CLARABEL failed ({e}), falling back to SCS")
-    prob.solve(solver=cp.SCS, eps_rel=1e-9)
+    prob, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob(model_config, input_vehicle_rewards)
+    try:
+        prob.solve(solver=cp.CLARABEL)
+        if prob.status not in ("optimal", "optimal_inaccurate"):
+            raise ValueError(f"CLARABEL status: {prob.status}")
+    except Exception as e:
+        print(f"CLARABEL failed ({e}), falling back to SCS")
+        prob.solve(solver=cp.SCS, eps_rel=1e-9)
 
     n_loc = len(model_config.locations)
 
