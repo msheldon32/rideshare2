@@ -68,6 +68,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     if input_vehicle_rewards is None:
         input_vehicle_rewards = model_config.vehicle_rewards
     n_loc = len(model_config.locations)
+    service_rates = [s + 0.1 for s in model_config.service_rates]
 
     arrivals_into_queue = cp.Variable((n_loc, n_loc), nonneg=True)
     balk_rate = cp.Variable((n_loc, n_loc), nonneg=True)
@@ -90,7 +91,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
 
     # queue cost: integrated marginals (log barrier)
     for i in range(n_loc):
-        obj -= cp.log(model_config.service_rates[i] - cp.sum(arrivals_into_queue[:, i])) * model_config.reservation
+        obj -= cp.log(service_rates[i] - cp.sum(arrivals_into_queue[:, i])) * model_config.reservation
 
     for i in range(n_loc):
         for k in range(n_loc):
@@ -117,6 +118,7 @@ def get_cvxpy_prob_agg_queue(model_config, input_producer_rewards=None):
     if input_producer_rewards is None:
         input_producer_rewards = model_config.producer_rewards
     n_loc = len(model_config.locations)
+    service_rates = [s + 0.1 for s in model_config.service_rates]
 
     arrivals_into_queue = cp.Variable((n_loc, n_loc), nonneg=True)
     balk_rate = cp.Variable((n_loc, n_loc), nonneg=True)
@@ -139,7 +141,7 @@ def get_cvxpy_prob_agg_queue(model_config, input_producer_rewards=None):
 
     # queue cost: aggregate queue length E[L] = lambda / (mu - lambda) = mu * inv_pos(mu - lambda) - 1
     for i in range(n_loc):
-        mu_i = model_config.service_rates[i]
+        mu_i = service_rates[i]
         obj += (mu_i * cp.inv_pos(mu_i - cp.sum(arrivals_into_queue[:, i])) - 1) * model_config.reservation
 
     for i in range(n_loc):
