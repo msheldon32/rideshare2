@@ -79,7 +79,7 @@ class Simulator:
         # one estimator per period
         #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
         self.empirical_estimator = True
-        decay_tax = controller_type == "fixed"
+        decay_tax = controller_type != "fixed"
         self.estimators = [estimator_empirical.Estimator(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha, decay_tax=decay_tax) for period in range(n_periods)]
 
         self.update_timestep = update_timestep
@@ -546,7 +546,7 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "fixed"
+    controller_type = "baseline"
     use_empirical = True
     use_agg = False
 

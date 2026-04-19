@@ -142,7 +142,7 @@ class TraceStatistics:
 
 class Estimator:
     def __init__(self, rate_tracker, grid, period, controller, trace_stats,
-                 use_fare_tax=False, alpha=0, ewma_alpha=0.5, decay_tax=False):
+                 use_fare_tax=False, alpha=0, ewma_alpha=0.5, decay_tax=True):
         self.rate_tracker = rate_tracker
         self.grid = grid
         self.period = period
