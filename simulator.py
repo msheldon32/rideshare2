@@ -23,7 +23,7 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=0.5,
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=1.0,
                  use_empirical=False, use_agg=False, reevaluate=False, clear_at_1=True):
         #input("to do: have custom fare adjustments for different values of alpha")
         if seed is not None:
@@ -173,10 +173,11 @@ class Simulator:
             print(f"service_rates: {config.service_rates}")
             print(f"vehicle_rewards: {config.vehicle_rewards}")
 
+            prev_policies = [self.models[period][_class].policy for _class in range(self.n_classes)]
             if self.use_agg_queue_policy:
-                new_policies = policy.get_policies_agg_queue(config)
+                new_policies = policy.get_policies_agg_queue(config, prev_policies=prev_policies)
             else:
-                new_policies = policy.get_policies(config)
+                new_policies = policy.get_policies(config, prev_policies=prev_policies)
 
             est_reward = policy.estimate_total_reward(config, new_policies)
             print(f"estimated total reward rate: {est_reward:.4f}")
@@ -545,7 +546,7 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "method"
+    controller_type = "fixed"
     use_empirical = True
     use_agg = False
 

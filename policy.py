@@ -209,18 +209,26 @@ def get_policies_agg_queue(model_config, input_producer_rewards=None, prev_polic
     if warm:
         _apply_warm_start(model_config, prev_policies, arrivals_into_queue, flows_between_locations, balk_rate)
     try:
-        prob.solve(solver=cp.CLARABEL, warm_start=warm)
+        prob.solve(solver=cp.SCS, eps_rel=1e-12, warm_start=warm)
         if prob.status not in ("optimal", "optimal_inaccurate"):
-            raise ValueError(f"CLARABEL status: {prob.status}")
+            raise ValueError(f"SCS status: {prob.status}")
     except Exception as e:
-        print(f"CLARABEL failed ({e}), falling back to SCS")
+        print(f"SCS failed ({e}), falling back to ECOS")
         try:
-            prob.solve(solver=cp.SCS, eps_rel=1e-9, warm_start=warm)
-            if prob.status not in ("optimal", "optimal_inaccurate"):
-                raise ValueError(f"SCS status: {prob.status}")
-        except Exception as e2:
-            print(f"SCS failed ({e2}), falling back to ECOS")
             prob.solve(solver=cp.ECOS)
+            if prob.status not in ("optimal", "optimal_inaccurate"):
+                raise ValueError(f"ECOS status: {prob.status}")
+        except Exception as e2:
+            print(f"ECOS failed ({e2}), returning previous policy")
+            if prev_policies is not None:
+                return [list(p) for p in prev_policies]
+            n_loc = len(model_config.locations)
+            fallback = [[None for _ in range(n_loc)] for _ in range(n_loc)]
+            for k in range(n_loc):
+                for i in range(n_loc):
+                    fallback[k][i] = [0.0] * (n_loc + 1)
+                    fallback[k][i][n_loc] = 1.0
+            return fallback
 
     n_loc = len(model_config.locations)
     policies = [[None for i in range(n_loc)] for k in range(n_loc)]
@@ -243,21 +251,32 @@ def get_policies_agg_queue(model_config, input_producer_rewards=None, prev_polic
     return policies
 
 
-def get_policies(model_config, input_vehicle_rewards=None):
+def get_policies(model_config, input_vehicle_rewards=None, prev_policies=None):
     prob, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob(model_config, input_vehicle_rewards)
+    warm = prev_policies is not None
+    if warm:
+        _apply_warm_start(model_config, prev_policies, arrivals_into_queue, flows_between_locations, balk_rate)
     try:
-        prob.solve(solver=cp.CLARABEL)
+        prob.solve(solver=cp.SCS, eps_rel=1e-12, warm_start=warm)
         if prob.status not in ("optimal", "optimal_inaccurate"):
-            raise ValueError(f"CLARABEL status: {prob.status}")
+            raise ValueError(f"SCS status: {prob.status}")
     except Exception as e:
-        print(f"CLARABEL failed ({e}), falling back to SCS")
+        print(f"SCS failed ({e}), falling back to ECOS")
         try:
-            prob.solve(solver=cp.SCS, eps_rel=1e-9)
-            if prob.status not in ("optimal", "optimal_inaccurate"):
-                raise ValueError(f"SCS status: {prob.status}")
-        except Exception as e2:
-            print(f"SCS failed ({e2}), falling back to ECOS")
             prob.solve(solver=cp.ECOS)
+            if prob.status not in ("optimal", "optimal_inaccurate"):
+                raise ValueError(f"ECOS status: {prob.status}")
+        except Exception as e2:
+            print(f"ECOS failed ({e2}), returning previous policy")
+            if prev_policies is not None:
+                return [list(p) for p in prev_policies]
+            n_loc = len(model_config.locations)
+            fallback = [[None for _ in range(n_loc)] for _ in range(n_loc)]
+            for k in range(n_loc):
+                for i in range(n_loc):
+                    fallback[k][i] = [0.0] * (n_loc + 1)
+                    fallback[k][i][n_loc] = 1.0
+            return fallback
 
     n_loc = len(model_config.locations)
 
