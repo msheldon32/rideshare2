@@ -130,7 +130,7 @@ class SmoothedController:
         self.tax_buffers = [[] for i in range(N_CLUSTERS)]
         self.q_estimate = [0 for i in range(N_CLUSTERS)]
 
-        self.beta = 0.8
+        self.beta = 0.0
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]

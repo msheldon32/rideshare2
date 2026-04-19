@@ -142,7 +142,7 @@ class TraceStatistics:
 
 class Estimator:
     def __init__(self, rate_tracker, grid, period, controller, trace_stats,
-                 use_fare_tax=False, alpha=0, ewma_alpha=0.5):
+                 use_fare_tax=False, alpha=0, ewma_alpha=0.5, decay_tax=False):
         self.rate_tracker = rate_tracker
         self.grid = grid
         self.period = period
@@ -151,6 +151,7 @@ class Estimator:
         self.use_fare_tax = use_fare_tax
         self.alpha = alpha
         self.ewma_alpha = ewma_alpha
+        self.decay_tax = decay_tax
         self.tax_scale = 0.0
         self.trace_stats = trace_stats
 
@@ -231,7 +232,7 @@ class Estimator:
                 m = sum(self._tax_means[loc]) / len(self._tax_means[loc])
                 self.tax_est[loc] = self.ewma_alpha * self.tax_est[loc] + (1 - self.ewma_alpha) * m
                 self._tax_means[loc].clear()
-            else:
+            elif self.decay_tax:
                 self.tax_est[loc] = self.ewma_alpha * self.tax_est[loc]
 
     def get_arrival_rates(self):

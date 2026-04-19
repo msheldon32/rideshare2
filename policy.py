@@ -69,67 +69,53 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
         input_vehicle_rewards = model_config.vehicle_rewards
     n_loc = len(model_config.locations)
 
-    # arrivals into queue: arrivals into the queue at location i, from vehicles with origin k
     arrivals_into_queue = cp.Variable((n_loc, n_loc), nonneg=True)
     balk_rate = cp.Variable((n_loc, n_loc), nonneg=True)
-
-    # flows between locations: flows from location i to location j, from vehicles with origin k
     flows_between_locations = [cp.Variable((n_loc, n_loc), nonneg=True) for k in range(n_loc)]
 
-    vehicle_rewards = [[cp.Parameter() for i in range(n_loc)] for k in range(n_loc)]
-
-    for k in range(n_loc):
-        for i in range(n_loc):
-            vehicle_rewards[k][i].value = input_vehicle_rewards[k][i]
-
     vehicle_utilities = [[None for i in range(n_loc)] for k in range(n_loc)]
-
     for k in range(n_loc):
         for i in range(n_loc):
-            expected_tt_difference = 0#-sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
-            vehicle_utilities[k][i] = (expected_tt_difference + vehicle_rewards[k][i])
+            expected_tt_difference = 0
+            vehicle_utilities[k][i] = expected_tt_difference + input_vehicle_rewards[k][i]
 
-    # objective function: minimize the travel time multiplied by the flow minus the log of (service rate - total arrival rate across all origins)
     obj = 0
     for k in range(n_loc):
         for i in range(n_loc):
             if k != i:
-                obj += model_config.true_cost(i,k) * balk_rate[k,i]
+                obj += model_config.true_cost(i, k) * balk_rate[k, i]
             for j in range(n_loc):
-                travel_cost = model_config.true_cost(i,j)#model_config.get_rebalance_cost(k, i, j)
-                obj += travel_cost * flows_between_locations[k][i,j]
+                travel_cost = model_config.true_cost(i, j)
+                obj += travel_cost * flows_between_locations[k][i, j]
 
+    # queue cost: integrated marginals (log barrier)
     for i in range(n_loc):
         obj -= cp.log(model_config.service_rates[i] - cp.sum(arrivals_into_queue[:, i])) * model_config.reservation
 
     for i in range(n_loc):
         for k in range(n_loc):
-            obj -= vehicle_utilities[k][i] * arrivals_into_queue[k,i]
+            obj -= vehicle_utilities[k][i] * arrivals_into_queue[k, i]
 
     objective = cp.Minimize(obj)
 
-    # constraints
     constraints = []
-
-    # 1. flow conservation
     for k in range(n_loc):
         for i in range(n_loc):
             outside_arrival_rate = model_config.arrival_rates[i] if i == k else 0
-
             vehicle_returns = (1 - model_config.exit_prob) * cp.sum([arrivals_into_queue[k, j] * model_config.customer_transitions[j][i] for j in range(n_loc)])
+            constraints.append(cp.sum(flows_between_locations[k][:, i]) - cp.sum(flows_between_locations[k][i, :]) + outside_arrival_rate + vehicle_returns == arrivals_into_queue[k, i] + balk_rate[k, i])
 
-            constraints.append(cp.sum(flows_between_locations[k][:, i]) - cp.sum(flows_between_locations[k][i, :]) + outside_arrival_rate + vehicle_returns == arrivals_into_queue[k,i] + balk_rate[k,i])
-
-    # 2. no self-transitions
     for k in range(n_loc):
         for i in range(n_loc):
             constraints.append(flows_between_locations[k][i, i] == 0)
 
     prob = cp.Problem(objective, constraints)
+    return [prob, arrivals_into_queue, flows_between_locations, balk_rate]
 
-    return [prob, vehicle_rewards, arrivals_into_queue, flows_between_locations, balk_rate]
 
-def get_cvxpy_prob_agg_queue(model_config):
+def get_cvxpy_prob_agg_queue(model_config, input_producer_rewards=None):
+    if input_producer_rewards is None:
+        input_producer_rewards = model_config.producer_rewards
     n_loc = len(model_config.locations)
 
     arrivals_into_queue = cp.Variable((n_loc, n_loc), nonneg=True)
@@ -139,19 +125,19 @@ def get_cvxpy_prob_agg_queue(model_config):
     vehicle_utilities = [[None for i in range(n_loc)] for k in range(n_loc)]
     for k in range(n_loc):
         for i in range(n_loc):
-            expected_tt_difference = 0#-sum([model_config.customer_transitions[i][j] * model_config.get_potential_change(k, i, j) for j in range(n_loc)])
-            vehicle_utilities[k][i] = expected_tt_difference + model_config.producer_rewards[k][i]
+            expected_tt_difference = 0
+            vehicle_utilities[k][i] = expected_tt_difference + input_producer_rewards[k][i]
 
     obj = 0
     for k in range(n_loc):
         for i in range(n_loc):
             if k != i:
-                obj += model_config.true_cost(i,k) * balk_rate[k,i]
+                obj += model_config.true_cost(i, k) * balk_rate[k, i]
             for j in range(n_loc):
-                travel_cost = model_config.true_cost(i,j)# model_config.get_rebalance_cost(k, i, j)
+                travel_cost = model_config.true_cost(i, j)
                 obj += travel_cost * flows_between_locations[k][i, j]
 
-    # aggregate queue length: E[L] = lambda / (mu - lambda) = mu * inv_pos(mu - lambda) - 1
+    # queue cost: aggregate queue length E[L] = lambda / (mu - lambda) = mu * inv_pos(mu - lambda) - 1
     for i in range(n_loc):
         mu_i = model_config.service_rates[i]
         obj += (mu_i * cp.inv_pos(mu_i - cp.sum(arrivals_into_queue[:, i])) - 1) * model_config.reservation
@@ -169,7 +155,6 @@ def get_cvxpy_prob_agg_queue(model_config):
             vehicle_returns = (1 - model_config.exit_prob) * cp.sum([arrivals_into_queue[k, j] * model_config.customer_transitions[j][i] for j in range(n_loc)])
             constraints.append(cp.sum(flows_between_locations[k][:, i]) - cp.sum(flows_between_locations[k][i, :]) + outside_arrival_rate + vehicle_returns == arrivals_into_queue[k, i] + balk_rate[k, i])
 
-    # no self-transitions
     for k in range(n_loc):
         for i in range(n_loc):
             constraints.append(flows_between_locations[k][i, i] == 0)
@@ -178,8 +163,8 @@ def get_cvxpy_prob_agg_queue(model_config):
     return [prob, arrivals_into_queue, flows_between_locations, balk_rate]
 
 
-def get_policies_agg_queue(model_config):
-    prob, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob_agg_queue(model_config)
+def get_policies_agg_queue(model_config, input_producer_rewards=None):
+    prob, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob_agg_queue(model_config, input_producer_rewards)
     try:
         prob.solve(solver=cp.CLARABEL)
         if prob.status not in ("optimal", "optimal_inaccurate"):

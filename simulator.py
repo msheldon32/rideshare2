@@ -23,7 +23,7 @@ from util import *
 
 class Simulator:
     def __init__(self, requests, n_classes, n_clusters, n_periods, epoch, exit_probs,
-                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=1.0,
+                 controller_type="smoothed", alpha=0, ptg=0.2, seed=None, update_timestep=0.1, policy_smoothing=0.5,
                  use_empirical=False, use_agg=False, reevaluate=False, clear_at_1=True):
         #input("to do: have custom fare adjustments for different values of alpha")
         if seed is not None:
@@ -79,7 +79,8 @@ class Simulator:
         # one estimator per period
         #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
         self.empirical_estimator = True
-        self.estimators = [estimator_empirical.Estimator(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
+        decay_tax = controller_type == "fixed"
+        self.estimators = [estimator_empirical.Estimator(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha, decay_tax=decay_tax) for period in range(n_periods)]
 
         self.update_timestep = update_timestep
         self.last_ewma_update = 0.0
