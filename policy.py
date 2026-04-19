@@ -163,16 +163,59 @@ def get_cvxpy_prob_agg_queue(model_config, input_producer_rewards=None):
     return [prob, arrivals_into_queue, flows_between_locations, balk_rate]
 
 
-def get_policies_agg_queue(model_config, input_producer_rewards=None):
+def _warm_start_values(model_config, prev_policies):
+    """Given prev_policies and the new arrival rates in model_config, solve the
+    per-class flow balance equations and return implied LP variable values for
+    (arrivals_into_queue, flows_between_locations, balk_rate)."""
+    n_loc = len(model_config.locations)
+    aiq = np.zeros((n_loc, n_loc))
+    fbl = [np.zeros((n_loc, n_loc)) for _ in range(n_loc)]
+    br = np.zeros((n_loc, n_loc))
+    for k in range(n_loc):
+        A = np.zeros((n_loc, n_loc))
+        b = np.zeros(n_loc)
+        b[k] = model_config.arrival_rates[k]
+        for j in range(n_loc):
+            p_queue_j = prev_policies[k][j][j]
+            for i in range(n_loc):
+                if i != j:
+                    A[i, j] += prev_policies[k][j][i]
+                A[i, j] += (1 - model_config.exit_prob) * p_queue_j * model_config.customer_transitions[j][i]
+        try:
+            v = np.linalg.solve(np.eye(n_loc) - A, b)
+            v = np.maximum(v, 0)
+        except np.linalg.LinAlgError:
+            v = np.zeros(n_loc)
+        for i in range(n_loc):
+            aiq[k, i] = v[i] * prev_policies[k][i][i]
+            br[k, i] = v[i] * prev_policies[k][i][n_loc]
+            for j in range(n_loc):
+                if j != i:
+                    fbl[k][i, j] = v[i] * prev_policies[k][i][j]
+    return aiq, fbl, br
+
+
+def _apply_warm_start(model_config, prev_policies, arrivals_into_queue, flows_between_locations, balk_rate):
+    aiq, fbl, br = _warm_start_values(model_config, prev_policies)
+    arrivals_into_queue.value = aiq
+    balk_rate.value = br
+    for k in range(len(fbl)):
+        flows_between_locations[k].value = fbl[k]
+
+
+def get_policies_agg_queue(model_config, input_producer_rewards=None, prev_policies=None):
     prob, arrivals_into_queue, flows_between_locations, balk_rate = get_cvxpy_prob_agg_queue(model_config, input_producer_rewards)
+    warm = prev_policies is not None
+    if warm:
+        _apply_warm_start(model_config, prev_policies, arrivals_into_queue, flows_between_locations, balk_rate)
     try:
-        prob.solve(solver=cp.CLARABEL)
+        prob.solve(solver=cp.CLARABEL, warm_start=warm)
         if prob.status not in ("optimal", "optimal_inaccurate"):
             raise ValueError(f"CLARABEL status: {prob.status}")
     except Exception as e:
         print(f"CLARABEL failed ({e}), falling back to SCS")
         try:
-            prob.solve(solver=cp.SCS, eps_rel=1e-9)
+            prob.solve(solver=cp.SCS, eps_rel=1e-9, warm_start=warm)
             if prob.status not in ("optimal", "optimal_inaccurate"):
                 raise ValueError(f"SCS status: {prob.status}")
         except Exception as e2:
