@@ -73,15 +73,22 @@ class Simulator:
         use_fare_tax = controller_type in ["method", "smoothed", "baseline"]
         self.use_agg_queue_policy = use_agg#controller_type in ["method", "smoothed"]
 
-        # spawner is needed up front so the empirical estimator can read its trace
+        # spawner / requester are needed up front so the estimators can read
+        # the underlying rate sources (trace or synthetic generators)
         self.spawner = spawner.Spawner(epoch)
-        self.trace_stats = estimator_empirical.TraceStatistics(requests, self.spawner.spawn_events, epoch)
+        self.requester = requester.Requester(self.grid, epoch)
 
         # one estimator per period
         #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
         self.empirical_estimator = True
         decay_tax = controller_type != "fixed"
-        self.estimators = [estimator_empirical.Estimator(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha, decay_tax=decay_tax, swap_reward_fare=self.swap_reward_fare, ptg=ptg) for period in range(n_periods)]
+        if use_empirical:
+            self.trace_stats = estimator_empirical.TraceStatistics(requests, self.spawner.spawn_events, epoch)
+            EstimatorClass = estimator_empirical.Estimator
+        else:
+            self.trace_stats = estimator_synthetic.ConstantStatistics(self.requester, self.spawner)
+            EstimatorClass = estimator_synthetic.Estimator
+        self.estimators = [EstimatorClass(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha, decay_tax=decay_tax, swap_reward_fare=self.swap_reward_fare, ptg=ptg) for period in range(n_periods)]
 
         self.update_timestep = update_timestep
         self.last_ewma_update = 0.0
@@ -108,7 +115,6 @@ class Simulator:
         self.t = 0
         self.last_policy_update = 0
 
-        self.requester = requester.Requester(self.grid, epoch)
         self.observer = observer.Observer()
         self.observer_reset = False
 
