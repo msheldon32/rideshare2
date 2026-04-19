@@ -142,7 +142,8 @@ class TraceStatistics:
 
 class Estimator:
     def __init__(self, rate_tracker, grid, period, controller, trace_stats,
-                 use_fare_tax=False, alpha=0, ewma_alpha=0.5, decay_tax=True):
+                 use_fare_tax=False, alpha=0, ewma_alpha=0.5, decay_tax=True,
+                 swap_reward_fare=False, ptg=0.0):
         self.rate_tracker = rate_tracker
         self.grid = grid
         self.period = period
@@ -152,6 +153,8 @@ class Estimator:
         self.alpha = alpha
         self.ewma_alpha = ewma_alpha
         self.decay_tax = decay_tax
+        self.swap_reward_fare = swap_reward_fare
+        self.ptg = ptg
         self.tax_scale = 0.0
         self.trace_stats = trace_stats
 
@@ -250,7 +253,9 @@ class Estimator:
         adjusted_producer_rewards = [[0.0] * n for _ in range(n)]
         for k in range(n):
             for i in range(n):
-                if self.use_fare_tax:
+                if self.swap_reward_fare:
+                    adjusted_rewards[k][i] = self.fare_est[i] - self.ptg * self.producer_reward_est[i]
+                elif self.use_fare_tax:
                     reward_est = self.fare_est[i] - self.tax_est[i]
                     other_est  = self.reward_est[k][i]
                     adjusted_rewards[k][i] = (1 - self.alpha) * reward_est + self.alpha * other_est

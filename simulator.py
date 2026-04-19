@@ -69,7 +69,7 @@ class Simulator:
 
         use_tax = controller_type in ["smoothed"]
         self.swap_reward_fare = controller_type == "fixed"
-        use_fare_tax = True#controller_type in ["method", "smoothed", "baseline", "fixed"]
+        use_fare_tax = controller_type in ["method", "smoothed", "baseline"]
         self.use_agg_queue_policy = use_agg#controller_type in ["method", "smoothed"]
 
         # spawner is needed up front so the empirical estimator can read its trace
@@ -80,7 +80,7 @@ class Simulator:
         #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
         self.empirical_estimator = True
         decay_tax = controller_type != "fixed"
-        self.estimators = [estimator_empirical.Estimator(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha, decay_tax=decay_tax) for period in range(n_periods)]
+        self.estimators = [estimator_empirical.Estimator(self.rate_tracker, self.grid, period, self.controller, self.trace_stats, use_fare_tax=use_fare_tax, alpha=alpha, decay_tax=decay_tax, swap_reward_fare=self.swap_reward_fare, ptg=ptg) for period in range(n_periods)]
 
         self.update_timestep = update_timestep
         self.last_ewma_update = 0.0
@@ -317,8 +317,9 @@ class Simulator:
         if self.swap_reward_fare:
             # need to swap these since for the fixed controller we're using a global fare adjustment
             #self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, remuneration)
-            self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
-            self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, fare-remuneration)
+            #self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
+            #self.estimators[self.get_period()].observe_tax(driver_class, request.start_cluster, fare-remuneration)
+            pass
         else:
             self.estimators[self.get_period()].observe_fare(driver_class, request.start_cluster, fare)
 
@@ -546,7 +547,7 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "baseline"
+    controller_type = "fixed"
     use_empirical = True
     use_agg = False
 
