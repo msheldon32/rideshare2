@@ -236,7 +236,7 @@ class Estimator:
                 self.tax_est[loc] = self.ewma_alpha * self.tax_est[loc]
 
     def get_arrival_rates(self):
-        return list(self.spawn_rate)
+        return [r + 0.01 for r in self.spawn_rate]
 
     def get_service_rates(self):
         return list(self.service_rate)

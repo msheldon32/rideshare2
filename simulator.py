@@ -545,7 +545,7 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "baseline"
+    controller_type = "method"
     use_empirical = True
     use_agg = False
 
