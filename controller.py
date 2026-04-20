@@ -129,8 +129,9 @@ class SmoothedController:
         self.grid = grid
         self.tax_buffers = [[] for i in range(N_CLUSTERS)]
         self.q_estimate = [0 for i in range(N_CLUSTERS)]
+        self.dt_estimate = [0 for i in range(N_CLUSTERS)]
 
-        self.beta = 0.0
+        self.beta = 0.9
 
         self.last_event_type = ["departure" for i in range(N_CLUSTERS)]
         self.last_length = [0 for i in range(N_CLUSTERS)]
@@ -139,7 +140,7 @@ class SmoothedController:
 
     def get_price(self, period, _class, start_cluster, end_cluster, gross_fare, fare, driver_ct, time, waiting_time):
         #tax = self.tax_buffers[start_cluster][-1]
-        tax = self.tax_buffers[start_cluster].pop(0)
+        tax = self.tax_buffers[start_cluster].pop()
         #tax = min(tax*RESERVATION, fare/100)
         total_opt = (fare/100) - tax
         profit_max = waiting_time*RESERVATION + self.grid.get_travel_cost(_class, end_cluster, period) - self.grid.get_travel_cost(_class, start_cluster, period)
@@ -158,10 +159,12 @@ class SmoothedController:
         tax = None
         if self.last_event_type[cluster] == "arrival":
             Qminus = self.last_length[cluster]
+            #Qsquared_est = (Qminus - self.q_estimate[cluster])**2 + (2*Qminus*self.q_estimate[cluster]) - (self.q_estimate[cluster])**2
+            Qsquared_est = (Qminus - self.q_estimate[cluster])**2 + (self.q_estimate[cluster])**2
 
             self.q_estimate[cluster] = (1-self.beta)*self.last_length[cluster] + self.beta*self.q_estimate[cluster]
-            Qsquared_est = (Qminus - self.q_estimate[cluster])**2 + (self.q_estimate[cluster])**2
-            tax = (time-self.last_t[cluster]) * Qsquared_est
+            self.dt_estimate[cluster] = (1-self.beta)*self.dt_estimate[cluster] + self.beta*(time-self.last_t[cluster])
+            tax = self.dt_estimate[cluster] * Qsquared_est
             tax = min(tax, self.ceiling/RESERVATION)
             print("---------------------------------------------------")
             print(f"applying tax of {tax}")

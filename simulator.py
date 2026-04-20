@@ -33,7 +33,7 @@ class Simulator:
         self.reevaluate=reevaluate
         self.clear_at_1 = clear_at_1
 
-        self.policy_update_window = 24
+        self.policy_update_window = 72
         self.policy_smoothing = policy_smoothing
         self.inactive_cleared = False
 
@@ -80,7 +80,7 @@ class Simulator:
 
         # one estimator per period
         #self.estimators = [estimator_mean.Estimator(self.rate_tracker, self.grid, period, self.controller, use_fare_tax=use_fare_tax, alpha=alpha) for period in range(n_periods)]
-        self.empirical_estimator = True
+        self.empirical_estimator = use_empirical
         decay_tax = controller_type != "fixed"
         if use_empirical:
             self.trace_stats = estimator_empirical.TraceStatistics(requests, self.spawner.spawn_events, epoch)
@@ -157,7 +157,7 @@ class Simulator:
         print("done.")
 
     def update_policies(self):
-        if self.empirical_estimator:
+        if self.empirical_estimator or True:
             for est in self.estimators:
                 est.flush(self.t)
             self.rate_tracker.flush(self.t)
@@ -200,7 +200,7 @@ class Simulator:
                 ]
                 self.models[period][_class] = model.DriverModel(blended, self.exit_probs[period])
 
-        if not self.empirical_estimator:
+        if not self.empirical_estimator and False:
             for est in self.estimators:
                 est.flush(self.t)
             self.rate_tracker.flush(self.t)
@@ -452,7 +452,7 @@ class Simulator:
 
         print(f"({event_t}): {event}")
 
-        if not self.is_active_day(event_t) or event_t - self.t > 24:
+        if (not self.is_active_day(event_t) or event_t - self.t > 24) and self.use_empirical:
             # skipping inactive days (Thu-Sun) or any gap longer than a day
             if not self.inactive_cleared:
                 # finalize pre-gap state: consume buffers, EWMA-flush, recompute
@@ -554,8 +554,8 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "baseline"
-    use_empirical = True
+    controller_type = "smoothed"
+    use_empirical = False
     use_agg = False
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical, use_agg=use_agg)
