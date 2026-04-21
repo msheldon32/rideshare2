@@ -92,7 +92,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
     # queue cost: integrated marginals. log(mu - sum) = log(mu) + log(1 - sum/mu);
     # the log(mu) term is constant in the variables and dropped.
     for i in range(n_loc):
-        obj -= cp.log(1 - cp.sum(arrivals_into_queue[:, i]) / service_rates[i]) * model_config.reservation
+        obj -= cp.log(1 - (cp.sum(arrivals_into_queue[:, i]) / service_rates[i])) * model_config.reservation
 
     for i in range(n_loc):
         for k in range(n_loc):
@@ -112,7 +112,7 @@ def get_cvxpy_prob(model_config, input_vehicle_rewards=None):
             constraints.append(flows_between_locations[k][i, i] == 0)
 
     # utilization cap: keep the log argument bounded away from the singularity
-    util_cap = 0.99
+    util_cap = 0.999
     for i in range(n_loc):
         constraints.append(cp.sum(arrivals_into_queue[:, i]) <= util_cap * service_rates[i])
 
@@ -168,7 +168,7 @@ def get_cvxpy_prob_agg_queue(model_config, input_producer_rewards=None):
             constraints.append(flows_between_locations[k][i, i] == 0)
 
     # utilization cap: keep the inv_pos argument bounded away from the singularity
-    util_cap = 0.99
+    util_cap = 0.999
     for i in range(n_loc):
         constraints.append(cp.sum(arrivals_into_queue[:, i]) <= util_cap * service_rates[i])
 
@@ -222,7 +222,7 @@ def get_policies_agg_queue(model_config, input_producer_rewards=None, prev_polic
     if warm:
         _apply_warm_start(model_config, prev_policies, arrivals_into_queue, flows_between_locations, balk_rate)
     try:
-        prob.solve(solver=cp.SCS, eps_rel=1e-12, warm_start=warm)
+        prob.solve(solver=cp.SCS, eps_rel=1e-12, eps=1e-12, scale=100, warm_start=warm)
         if prob.status not in ("optimal", "optimal_inaccurate"):
             raise ValueError(f"SCS status: {prob.status}")
     except Exception as e:
@@ -270,7 +270,7 @@ def get_policies(model_config, input_vehicle_rewards=None, prev_policies=None):
     if warm:
         _apply_warm_start(model_config, prev_policies, arrivals_into_queue, flows_between_locations, balk_rate)
     try:
-        prob.solve(solver=cp.SCS, eps_rel=1e-12, warm_start=warm)
+        prob.solve(solver=cp.SCS, eps_rel=1e-12, eps=1e-12, scale=100, warm_start=warm)
         if prob.status not in ("optimal", "optimal_inaccurate"):
             raise ValueError(f"SCS status: {prob.status}")
     except Exception as e:

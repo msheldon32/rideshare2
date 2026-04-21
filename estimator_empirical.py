@@ -155,7 +155,7 @@ class Estimator:
         self.decay_tax = decay_tax
         self.swap_reward_fare = swap_reward_fare
         self.ptg = ptg
-        self.tax_scale = 0.0
+        self.tax_scale = 1.0
         self.trace_stats = trace_stats
 
         n = self.n_locations

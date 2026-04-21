@@ -163,8 +163,9 @@ class SmoothedController:
             Qsquared_est = (Qminus - self.q_estimate[cluster])**2 + (self.q_estimate[cluster])**2
 
             self.q_estimate[cluster] = (1-self.beta)*self.last_length[cluster] + self.beta*self.q_estimate[cluster]
-            self.dt_estimate[cluster] = (1-self.beta)*self.dt_estimate[cluster] + self.beta*(time-self.last_t[cluster])
-            tax = self.dt_estimate[cluster] * Qsquared_est
+            #self.dt_estimate[cluster] = (1-self.beta)*self.dt_estimate[cluster] + self.beta*(time-self.last_t[cluster])
+            dt = time - self.last_t[cluster]
+            tax = dt * Qsquared_est
             tax = min(tax, self.ceiling/RESERVATION)
             print("---------------------------------------------------")
             print(f"applying tax of {tax}")

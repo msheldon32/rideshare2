@@ -168,9 +168,6 @@ class Simulator:
             self.observer.reward_printout(self.t-self.warmup_period)
             agg_tag = "agg" if self.use_agg_queue_policy else "noagg"
             self.observer.write_reward_csv(f"rewards_{self.controller_type}_{agg_tag}.csv", self.t)
-        tax_scale = min(1.0, self.t / self.tax_warmup)
-        for est in self.estimators:
-            est.tax_scale = tax_scale
 
         for period in range(self.n_periods):
             config = self.estimators[period].get_config(self.exit_probs[period])
@@ -204,6 +201,7 @@ class Simulator:
             for est in self.estimators:
                 est.flush(self.t)
             self.rate_tracker.flush(self.t)
+        input("Continue? ")
 
         self.last_policy_update = self.t
 
@@ -264,8 +262,6 @@ class Simulator:
         if not self.observer_reset and self.t >= self.warmup_period:
             self.observer.reset()
             self.observer_reset = True
-            for est in self.estimators:
-                est.tax_scale = 1.0
 
         self.clean_queue(request.start_cluster, self.t)
         self.estimators[self.get_period()].observe_service(request.start_cluster, self.t)
@@ -554,8 +550,8 @@ if __name__ == "__main__":
 
     input("Need to fix two things: 1. the pm adjustment for total reward, 2. diagnose underperformance")
 
-    controller_type = "smoothed"
-    use_empirical = False
+    controller_type = "method"
+    use_empirical = True
     use_agg = False
 
     simulator = Simulator(reqs, 16, 16, 8, epoch, exit_probs, seed=3, controller_type=controller_type, alpha=0, use_empirical=use_empirical, use_agg=use_agg)
